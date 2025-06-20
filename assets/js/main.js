@@ -62,31 +62,103 @@ function setupAuthEvents(showViewFn) {
 // VISTA 2: Búsqueda
 function setupSearchEvents() {
     document.getElementById('registerBtn').onclick = () => showView('register');
-    document.getElementById('searchBtnView').onclick = async () => {
-        const searchTerm = document.getElementById('searchInputView').value.trim();
-        if (!getIsAuthReady() || !getUserId()) {
-            showMessage('Debes iniciar sesión.', 3000);
+    
+    // Botón para mostrar todos los registros
+    document.getElementById('showAllBtn').onclick = async () => {
+        console.log('Mostrando todos los registros...');
+        console.log('User ID:', getUserId());
+        console.log('Is Auth Ready:', getIsAuthReady());
+        
+        if (!getIsAuthReady()) {
+            showMessage('Debes iniciar sesión para usar la app.', 3000);
             return;
         }
+        
         const supabase = getSupabase();
-        let orQuery = [
-            `serie.ilike.%${searchTerm}%`,
-            `current_cliente.ilike.%${searchTerm}%`,
-            `current_modelo.ilike.%${searchTerm}%`,
-            `current_estado.ilike.%${searchTerm}%`
-        ].join(',');
+        console.log('Cliente Supabase:', supabase);
+        
+        try {
+            console.log('Ejecutando consulta: SELECT * FROM printers WHERE user_id =', getUserId());
+            const { data, error } = await supabase
+                .from('printers')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            console.log('Respuesta completa de Supabase:', { data, error });
+            
+            if (error) {
+                console.error('Error de Supabase:', error);
+                throw error;
+            }
+            console.log('Todos los registros encontrados:', data);
+            console.log('Número de registros:', data ? data.length : 0);
+            lastSearchResults = data;
+            showView('results', lastSearchResults);
+        } catch (error) {
+            console.error('Error completo:', error);
+            showMessage('Error al buscar: ' + error.message, 4000);
+        }
+    };
+    
+    document.getElementById('searchBtnView').onclick = async () => {
+        const searchTerm = document.getElementById('searchInputView').value.trim();
+        console.log('Búsqueda iniciada con término:', searchTerm);
+        console.log('User ID:', getUserId());
+        console.log('Is Auth Ready:', getIsAuthReady());
+        
+        if (!getIsAuthReady()) {
+            showMessage('Debes iniciar sesión para usar la app.', 3000);
+            return;
+        }
+        
+        const supabase = getSupabase();
+        
+        // Si el término de búsqueda está vacío, mostrar todos los registros
+        if (!searchTerm) {
+            console.log('Búsqueda sin término - mostrando todos los registros');
+            try {
+                const { data, error } = await supabase
+                    .from('printers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                if (error) throw error;
+                console.log('Resultados encontrados:', data);
+                lastSearchResults = data;
+                showView('results', lastSearchResults);
+            } catch (error) {
+                console.error('Error al buscar todos los registros:', error);
+                showMessage('Error al buscar: ' + error.message, 4000);
+            }
+            return;
+        }
+        
+        // Búsqueda con término específico
+        console.log(`Buscando solo por serie: ${searchTerm}`);
+        
         try {
             const { data, error } = await supabase
                 .from('printers')
                 .select('*')
-                .or(orQuery)
-                .eq('user_id', getUserId());
-            if (error) throw error;
+                .ilike('serie', `%${searchTerm}%`)
+                .order('created_at', { ascending: false });
+            
+            console.log('Respuesta completa de búsqueda:', { data, error });
+            
+            if (error) {
+                console.error('Error de Supabase:', error);
+                throw error;
+            }
+            console.log('Resultados de búsqueda encontrados:', data);
+            console.log('Número de resultados:', data ? data.length : 0);
             lastSearchResults = data;
             showView('results', lastSearchResults);
         } catch (error) {
+            console.error('Error completo:', error);
             showMessage('Error al buscar: ' + error.message, 4000);
         }
+        
+        // Agregar botón de prueba temporal
+        addTestButton();
     };
 }
 
@@ -242,19 +314,33 @@ function setupFileCategoryEvents() {
 
 // VISTA 4: Resultados
 function setupResultsEvents(data) {
+    console.log('Configurando vista de resultados con datos:', data);
     const resultsList = document.getElementById('resultsList');
+    
+    if (!resultsList) {
+        console.error('Elemento resultsList no encontrado');
+        return;
+    }
+    
     if (!data || data.length === 0) {
+        console.log('No hay datos para mostrar');
         resultsList.innerHTML = '<li class="list-group-item">No se encontraron resultados.</li>';
     } else {
+        console.log('Mostrando', data.length, 'resultados');
         resultsList.innerHTML = data.map(item => `
             <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span><b>${item.serie}</b> - ${item.current_cliente} (${item.current_modelo}) <span class="badge bg-info">${item.current_estado || ''}</span></span>
+                <span><b>${item.serie || 'Sin serie'}</b> - ${item.current_cliente || 'Sin cliente'} (${item.current_modelo || 'Sin modelo'}) <span class="badge bg-info">${item.current_estado || 'Sin estado'}</span></span>
                 <button class="btn btn-primary btn-sm editResultBtn" data-id="${item.id}"><i class="fas fa-edit"></i> Editar</button>
             </li>
         `).join('');
-        document.querySelectorAll('.editResultBtn').forEach(btn => {
+        
+        const editButtons = document.querySelectorAll('.editResultBtn');
+        console.log('Botones de editar encontrados:', editButtons.length);
+        
+        editButtons.forEach(btn => {
             btn.onclick = (e) => {
                 const id = e.currentTarget.dataset.id;
+                console.log('Editando impresora con ID:', id);
                 lastEditData = data.find(x => x.id == id);
                 showView('edit', lastEditData);
             };
@@ -404,6 +490,68 @@ async function renderPrinterFiles(printerId) {
         }
     } catch (error) {
         document.getElementById('filesList').innerHTML = 'Error al cargar archivos.';
+    }
+}
+
+// Función de prueba para diagnosticar problemas de datos
+async function testSupabaseConnection() {
+    console.log('=== PRUEBA DE CONEXIÓN SUPABASE ===');
+    const supabase = getSupabase();
+    const userId = getUserId();
+    
+    console.log('User ID actual:', userId);
+    console.log('Is Auth Ready:', getIsAuthReady());
+    
+    try {
+        // Prueba 1: Contar todos los registros sin filtro
+        console.log('Prueba 1: Contando todos los registros...');
+        const { count: totalCount, error: countError } = await supabase
+            .from('printers')
+            .select('*', { count: 'exact', head: true });
+        
+        console.log('Total de registros en la tabla:', totalCount);
+        if (countError) console.error('Error al contar:', countError);
+        
+        // Prueba 2: Obtener todos los registros sin filtro
+        console.log('Prueba 2: Obteniendo todos los registros...');
+        const { data: allData, error: allError } = await supabase
+            .from('printers')
+            .select('*')
+            .limit(5);
+        
+        console.log('Primeros 5 registros:', allData);
+        if (allError) console.error('Error al obtener todos:', allError);
+        
+        // Prueba 3: Buscar por user_id específico
+        console.log('Prueba 3: Buscando por user_id =', userId);
+        const { data: userData, error: userError } = await supabase
+            .from('printers')
+            .select('*')
+            .eq('user_id', userId);
+        
+        console.log('Registros del usuario actual:', userData);
+        if (userError) console.error('Error al buscar por user_id:', userError);
+        
+        // Prueba 4: Verificar estructura de un registro
+        if (userData && userData.length > 0) {
+            console.log('Prueba 4: Estructura del primer registro:', userData[0]);
+            console.log('Campos disponibles:', Object.keys(userData[0]));
+        }
+        
+    } catch (error) {
+        console.error('Error en prueba de conexión:', error);
+    }
+}
+
+// Agregar botón de prueba temporal
+function addTestButton() {
+    const searchSection = document.querySelector('.form-section');
+    if (searchSection) {
+        const testBtn = document.createElement('button');
+        testBtn.className = 'btn btn-warning mt-2';
+        testBtn.innerHTML = '<i class="fas fa-bug"></i> Prueba de Conexión';
+        testBtn.onclick = testSupabaseConnection;
+        searchSection.appendChild(testBtn);
     }
 }
 
