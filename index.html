@@ -205,7 +205,7 @@
             </div>
             <div class="user-icon">
                 <i class="fas fa-user-circle"></i>
-                <span id="userIdDisplay" style="display: none;"></span> <!-- Para mostrar el ID de usuario -->
+                <span id="userIdDisplay"></span> <!-- Para mostrar el ID de usuario -->
             </div>
         </div>
         
@@ -294,6 +294,7 @@
                     <small class="text-muted">PDF, DOC, IMG - Máximo 10MB por archivo</small>
                     <input type="file" id="fileInput" style="display: none;" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt">
                 </div>
+                <div class="file-list" id="fileList"></div>
                 <!-- Botón de cámara para capturar foto -->
                 <div class="d-flex justify-content-center mt-2">
                     <button type="button" class="btn btn-outline-secondary" id="cameraButton">
@@ -302,7 +303,6 @@
                     <input type="file" accept="image/*" capture="environment" id="cameraInput" style="display: none;">
                 </div>
                 <!-- Fin botón de cámara -->
-                <div class="file-list" id="fileList"></div>
             </div>
             
             <!-- Botones de Acción -->
@@ -406,7 +406,13 @@
                             });
                             if (signUpError) throw signUpError;
                         } else {
-                            throw signInError; // Otro error de inicio de sesión
+                            // En caso de otro error de inicio de sesión, limpiar localStorage y reintentar
+                            console.warn("Error de inicio de sesión inesperado, limpiando credenciales anónimas y reintentando:", signInError.message);
+                            localStorage.removeItem('supabase_anon_email');
+                            localStorage.removeItem('supabase_anon_password');
+                            // Para reintentar, podríamos llamar a initSupabase() de nuevo o forzar un re-load.
+                            // Por ahora, simplemente mostrar el error y dejar que el onAuthStateChange maneje si hay una sesión válida.
+                            throw signInError; 
                         }
                     }
 
