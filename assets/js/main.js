@@ -132,14 +132,27 @@ function setupRegisterEvents() {
             showMessage('El campo SERIE es obligatorio.', 3000);
             return;
         }
+        
+        // Verificar que el user_id sea válido
+        if (!cleanData.user_id) {
+            console.error('User ID no válido:', cleanData.user_id);
+            showMessage('Error de autenticación. Por favor, inicia sesión nuevamente.', 4000);
+            return;
+        }
+        
         const supabase = getSupabase();
         try {
+            console.log('Intentando insertar en Supabase...');
             const { data: inserted, error } = await supabase
                 .from('printers')
                 .insert(cleanData)
                 .select('id');
             if (error) {
                 console.error('Error de Supabase:', error);
+                console.error('Código de error:', error.code);
+                console.error('Mensaje de error:', error.message);
+                console.error('Detalles del error:', error.details);
+                console.error('Hint del error:', error.hint);
                 if (error.code === '23505') {
                     showMessage('Ya existe una impresora con esa serie.', 4000);
                 } else {
@@ -147,6 +160,7 @@ function setupRegisterEvents() {
                 }
                 return;
             }
+            console.log('Inserción exitosa:', inserted);
             // Subida de archivos con categoría
             const printerId = inserted[0].id;
             await uploadAllFiles(printerId);
@@ -154,11 +168,13 @@ function setupRegisterEvents() {
             showView('search');
         } catch (error) {
             console.error('Error capturado:', error);
+            console.error('Stack trace:', error.stack);
             showMessage('Error al guardar: ' + error.message, 4000);
         }
     };
     document.getElementById('cancelRegisterBtn').onclick = () => showView('search');
     setupFileCategoryEvents();
+    setupFileUpload(); // Configurar la funcionalidad de subida de archivos
 }
 
 async function uploadAllFiles(printerId) {
@@ -316,6 +332,7 @@ function setupEditEvents(data) {
     };
     document.getElementById('cancelEditBtn').onclick = () => showView('search');
     setupFileCategoryEvents();
+    setupFileUpload(); // Configurar la funcionalidad de subida de archivos
 }
 
 // Mostrar historial de la impresora

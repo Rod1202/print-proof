@@ -138,17 +138,47 @@ async function handleFileSelect(e) {
 }
 
 export function setupFileUpload() {
+    console.log('Configurando funcionalidad de subida de archivos...');
+    
     fileInput = document.getElementById('fileInput');
     fileUploadArea = document.getElementById('fileUploadArea');
     fileList = document.getElementById('fileList');
     takePhotoBtn = document.getElementById('takePhotoBtn');
     cameraInput = document.getElementById('cameraInput');
-    fileUploadArea.addEventListener('dragover', handleDragOver);
-    fileUploadArea.addEventListener('dragleave', handleDragLeave);
-    fileUploadArea.addEventListener('drop', handleDrop);
-    fileUploadArea.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', handleFileSelect);
+    
+    console.log('Elementos encontrados:', {
+        fileInput: !!fileInput,
+        fileUploadArea: !!fileUploadArea,
+        fileList: !!fileList,
+        takePhotoBtn: !!takePhotoBtn,
+        cameraInput: !!cameraInput
+    });
+    
+    if (fileUploadArea) {
+        fileUploadArea.addEventListener('dragover', handleDragOver);
+        fileUploadArea.addEventListener('dragleave', handleDragLeave);
+        fileUploadArea.addEventListener('drop', handleDrop);
+        fileUploadArea.addEventListener('click', () => {
+            if (fileInput) {
+                fileInput.click();
+            } else {
+                console.error('Elemento fileInput no encontrado');
+            }
+        });
+        console.log('Event listeners de drag & drop configurados');
+    } else {
+        console.error('Elemento fileUploadArea no encontrado');
+    }
+    
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileSelect);
+        console.log('Event listener de fileInput configurado');
+    } else {
+        console.error('Elemento fileInput no encontrado');
+    }
+    
     updateFileList();
+    
     // Lógica para tomar foto
     if (takePhotoBtn && cameraInput) {
         takePhotoBtn.addEventListener('click', (e) => {
@@ -160,5 +190,13 @@ export function setupFileUpload() {
             const files = Array.from(e.target.files);
             addFiles(files);
         });
+        console.log('Event listeners de cámara configurados');
+    } else {
+        console.warn('Elementos de cámara no encontrados:', {
+            takePhotoBtn: !!takePhotoBtn,
+            cameraInput: !!cameraInput
+        });
     }
+    
+    console.log('Configuración de subida de archivos completada');
 } 
