@@ -1,10 +1,12 @@
 <div class="auth-prompt">
     <h4>Inicia Sesión para Usar la Aplicación</h4>
     <p>Por favor, inicia sesión con tu cuenta de Microsoft para acceder al gestor de impresoras.</p>
-    <button id="signInWithMicrosoftBtn" class="btn btn-primary btn-lg mt-3">
-        <i class="fab fa-microsoft me-2"></i> Iniciar Sesión con Microsoft
-    </button>
-    <button id="guestLoginBtn" class="btn btn-secondary btn-lg mt-3 ms-2">
-        <i class="fas fa-user-secret me-2"></i> Entrar como invitado
-    </button>
+    <div class="d-flex flex-column align-items-center" style="max-width: 400px; margin: 0 auto;">
+        <button id="signInWithMicrosoftBtn" type="button" class="btn btn-primary btn-lg mt-3 w-100 d-none">
+            <i class="fab fa-microsoft me-2"></i> Iniciar con Microsoft
+        </button>
+        <button id="guestLoginBtn" type="button" class="btn btn-secondary btn-lg mt-3 w-100">
+            <i class="fas fa-user-secret me-2"></i> Entrar como invitado
+        </button>
+    </div>
 </div> 

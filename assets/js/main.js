@@ -23,8 +23,8 @@ const fileUploadComponent = `
     </div>
     <div class="file-list" id="fileList"></div>
     <div class="d-flex justify-content-center align-items-center mt-3 gap-2">
-        <button type="button" class="btn btn-outline-primary" id="takePhotoBtn"><i class="fas fa-camera"></i> Tomar Foto</button>
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+        <button type="button" class="btn btn-outline-primary" id="takePhotoBtn" onclick="event.preventDefault(); event.stopPropagation();"><i class="fas fa-camera"></i> Tomar Foto</button>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="event.preventDefault(); event.stopPropagation();">
         <select class="form-select w-auto" id="fileCategorySelect">
             <option value="general">General</option>
             <option value="manual">Manual</option>
@@ -77,14 +77,22 @@ export function showView(view, data = null) {
         case 'edit_model':
             loadView('edit_model', () => setupEditModelEvents(data));
             break;
+        case 'error':
+            loadView('error', setupErrorEvents);
+            break;
     }
 }
 
 // VISTA 1: Autenticación
 function setupAuthEvents(showViewFn) {
-    document.getElementById('signInWithMicrosoftBtn').onclick = () => {
-        signInWithMicrosoft();
-    };
+    const msBtn = document.getElementById('signInWithMicrosoftBtn');
+    if (msBtn) {
+        msBtn.onclick = (e) => {
+            e.preventDefault();
+            showView('error');
+            return false;
+        };
+    }
     const guestButton = document.getElementById('guestLoginBtn');
     if (guestButton) {
         guestButton.onclick = () => {
@@ -94,9 +102,27 @@ function setupAuthEvents(showViewFn) {
     } else {
         console.error('No se encontró el botón de invitado (guestLoginBtn).');
     }
-    
     // Configurar la autenticación con la función de cambio de vista
     setupAuth(showViewFn);
+
+    // Interceptar el submit del formulario para máxima robustez
+    const authForm = document.getElementById('authForm');
+    if (authForm) {
+        authForm.addEventListener('submit', (e) => {
+            if (document.activeElement && document.activeElement.id === 'signInWithMicrosoftBtn') {
+                e.preventDefault();
+                showView('error');
+                return false;
+            }
+        });
+    }
+}
+
+function setupErrorEvents() {
+    const btn = document.getElementById('errorBackBtn');
+    if (btn) {
+        btn.onclick = () => showView('auth');
+    }
 }
 
 // VISTA 2: Búsqueda
@@ -259,6 +285,17 @@ async function setupRegisterEvents() {
         showMessage('Registro guardado con éxito.', 2000);
         showView('search');
     };
+
+    // Prevenir submits accidentales que puedan ocurrir tras tomar foto en móviles
+    registerForm.addEventListener('submit', (e) => {
+        // Solo permitir submit si viene del botón "Guardar Registro"
+        if (!e.submitter || e.submitter.type !== 'submit') {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Submit accidental prevenido');
+            return false;
+        }
+    });
 }
 
 async function fetchAllClientsWithAdm() {

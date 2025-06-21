@@ -187,6 +187,8 @@ export function setupFileUpload() {
             cameraInput.click();
         });
         cameraInput.addEventListener('change', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const files = Array.from(e.target.files);
             addFiles(files);
         });
