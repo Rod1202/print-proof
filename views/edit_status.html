@@ -1,0 +1,30 @@
+<!-- views/edit_status.html -->
+<div class="form-section">
+    <h5>Editar Estado de la Impresora</h5>
+    <p class="text-muted">Serie: <strong id="form_serie_display"></strong></p>
+    <form id="editStatusForm">
+        <div class="mb-3">
+            <label class="form-label">ESTADO</label>
+            <select class="form-select" id="current_estado" name="current_estado" required>
+                <option value="produccion">Producción</option>
+                <option value="backup">Backup</option>
+                <option value="reportado">Reportado</option>
+                <option value="cambiado">Cambiado</option>
+                <option value="taller">En Taller</option>
+                <option value="almacenado">Almacenado</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">OBSERVACIONES</label>
+            <textarea class="form-control" id="current_observaciones" name="current_observaciones" rows="3"></textarea>
+        </div>
+        
+        <!-- Componente de archivos reutilizado -->
+        <div id="fileUploadPartial"></div>
+
+        <div class="d-flex gap-2 mt-4 justify-content-center">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+        </div>
+    </form>
+</div> 

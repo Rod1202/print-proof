@@ -9,6 +9,31 @@ import { setupSearch } from '../../modules/search.js';
 let currentView = 'auth'; // 'auth', 'search', 'register', 'results', 'edit', 'detail'
 let lastSearchResults = null;
 let lastEditData = null;
+let currentRecordId = null; // ID de la impresora actualmente seleccionada
+let allClientsData = []; // Para almacenar clientes con sus ADMs
+
+// Reutilizaremos este HTML para la subida de archivos
+const fileUploadComponent = `
+    <div class="section-title mt-4">Archivos</div>
+    <div class="file-upload-area" id="fileUploadArea">
+        <i class="fas fa-paperclip fa-2x mb-2 text-muted"></i>
+        <div>Haz clic aquí o arrastra archivos para subir</div>
+        <small class="text-muted">Máximo 10MB por archivo</small>
+        <input type="file" id="fileInput" style="display: none;" multiple>
+    </div>
+    <div class="file-list" id="fileList"></div>
+    <div class="d-flex justify-content-center align-items-center mt-3 gap-2">
+        <button type="button" class="btn btn-outline-primary" id="takePhotoBtn"><i class="fas fa-camera"></i> Tomar Foto</button>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
+        <select class="form-select w-auto" id="fileCategorySelect">
+            <option value="general">General</option>
+            <option value="manual">Manual</option>
+            <option value="warranty">Garantía</option>
+            <option value="maintenance">Mantenimiento</option>
+            <option value="photo">Foto</option>
+            <option value="report">Reporte</option>
+        </select>
+    </div>`;
 
 // Carga una vista parcial desde /views/{viewName}.html y ejecuta callback tras cargar
 async function loadView(viewName, afterLoad) {
@@ -29,7 +54,7 @@ export function showView(view, data = null) {
             loadView('search', setupSearchEvents);
             break;
         case 'register':
-            loadView('register', setupRegisterEvents);
+            loadView('register', () => setupRegisterEvents());
             break;
         case 'results':
             loadView('results', () => setupResultsEvents(data));
@@ -39,6 +64,18 @@ export function showView(view, data = null) {
             break;
         case 'detail':
             loadView('detail', () => setupDetailEvents(data));
+            break;
+        case 'edit_status':
+            loadView('edit_status', () => setupEditStatusEvents(data));
+            break;
+        case 'edit_client':
+            loadView('edit_client', () => setupEditClientEvents(data));
+            break;
+        case 'edit_contact':
+            loadView('edit_contact', () => setupEditContactEvents(data));
+            break;
+        case 'edit_model':
+            loadView('edit_model', () => setupEditModelEvents(data));
             break;
     }
 }
@@ -63,292 +100,344 @@ function setupAuthEvents(showViewFn) {
 }
 
 // VISTA 2: Búsqueda
-function setupSearchEvents() {
-    document.getElementById('registerBtn').onclick = () => showView('register');
-    
-    document.getElementById('searchBtnView').onclick = async () => {
-        const searchTerm = document.getElementById('searchInputView').value.trim();
-        console.log('Búsqueda iniciada con término:', searchTerm);
-        console.log('User ID:', getUserId());
-        console.log('Is Auth Ready:', getIsAuthReady());
-        
-        if (!getIsAuthReady()) {
-            showMessage('Debes iniciar sesión para usar la app.', 3000);
-            return;
-        }
-        
-        const supabase = getSupabase();
-        
-        // Si el término de búsqueda está vacío, mostrar todos los registros
-        if (!searchTerm) {
-            console.log('Búsqueda sin término - mostrando todos los registros');
-            try {
-                const { data, error } = await supabase
-                    .from('printers')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                if (error) throw error;
-                console.log('Resultados encontrados:', data);
-                lastSearchResults = data;
-                showView('results', lastSearchResults);
-            } catch (error) {
-                console.error('Error al buscar todos los registros:', error);
-                showMessage('Error al buscar: ' + error.message, 4000);
-            }
-            return;
-        }
-        
-        // Búsqueda con término específico
-        console.log(`Buscando solo por serie: ${searchTerm}`);
-        
-        try {
-            const { data, error } = await supabase
-                .from('printers')
-                .select('*')
-                .ilike('serie', `%${searchTerm}%`)
-                .order('created_at', { ascending: false });
-            
-            console.log('Respuesta completa de búsqueda:', { data, error });
-            
-            if (error) {
-                console.error('Error de Supabase:', error);
-                throw error;
-            }
-            console.log('Resultados de búsqueda encontrados:', data);
-            console.log('Número de resultados:', data ? data.length : 0);
-            
-            lastSearchResults = data;
+async function setupSearchEvents() {
+    // Configurar el botón de registro
+    const registerBtn = document.getElementById('registerBtn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => showView('register'));
+    }
 
-            if (data && data.length === 1) {
-                // Si hay un único resultado, vamos directamente a la vista de detalle
-                console.log('Se encontró un resultado único. Mostrando vista de detalle.');
-                showView('detail', data[0]);
-            } else {
-                // Si hay 0 o múltiples resultados, mostramos la lista
-                console.log('Se encontraron 0 o múltiples resultados. Mostrando lista.');
-                showView('results', data);
+    // Configurar el botón de búsqueda
+    const searchBtn = document.getElementById('searchBtnView');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', async () => {
+            const searchTerm = document.getElementById('searchInputView').value.trim();
+            if (!searchTerm) {
+                alert('Por favor, ingrese un término de búsqueda.');
+                return;
             }
-        } catch (error) {
-            console.error('Error completo:', error);
-            showMessage('Error al buscar: ' + error.message, 4000);
-        }
-    };
+
+            const supabase = getSupabase();
+            const { data: printers, error } = await supabase
+                .from('printers')
+                .select(`
+                    *,
+                    client:clients(name, adm:adms(name)),
+                    model:printer_models(name)
+                `)
+                .ilike('serie', `%${searchTerm}%`);
+
+            if (error) {
+                console.error('Error searching records:', error);
+                alert(`Error en la búsqueda: ${error.message}`);
+                return;
+            }
+
+            console.log("Search results:", printers);
+
+            if (printers.length === 1) {
+                // Si hay un solo resultado, vamos a detalle y le pasamos el objeto directamente
+                showView('detail', printers[0]);
+            } else {
+                // Para 0 o múltiples resultados, pasamos los datos a la vista de resultados
+                showView('results', printers);
+            }
+        });
+    }
+
+    // También permitir búsqueda con Enter en el input
+    const searchInput = document.getElementById('searchInputView');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+    }
 }
 
 // VISTA 3: Registro
-function setupRegisterEvents() {
-    document.getElementById('registerForm').onsubmit = async (e) => {
-        e.preventDefault();
-        if (!getIsAuthReady() || !getUserId()) {
-            showMessage('Debes iniciar sesión.', 3000);
-            return;
-        }
-        const form = e.target;
-        const data = {
-            serie: form.serie.value.trim() || null,
-            current_modelo: form.current_modelo.value.trim() || null,
-            current_cliente: form.current_cliente.value.trim() || null,
-            current_contacto: form.current_contacto.value.trim() || null,
-            current_direccion: form.current_direccion.value.trim() || null,
-            current_sede: form.current_sede.value.trim() || null,
-            current_empresa: form.current_empresa.value.trim() || null,
-            current_dpto: form.current_dpto.value.trim() || null,
-            current_provincia: form.current_provincia.value.trim() || null,
-            current_distrito: form.current_distrito.value.trim() || null,
-            current_zona: form.current_zona.value.trim() || null,
-            current_estado: form.current_estado.value || null,
-            current_observaciones: form.current_observaciones.value.trim() || null,
-            user_id: getUserId()
-        };
-        
-        // Filtrar campos null para evitar problemas con la base de datos
-        const cleanData = {};
-        Object.keys(data).forEach(key => {
-            if (data[key] !== null && data[key] !== undefined && data[key] !== '') {
-                cleanData[key] = data[key];
+async function setupRegisterEvents() {
+    const registerForm = document.getElementById('registerForm');
+    const cancelRegisterBtn = document.getElementById('cancelRegisterBtn');
+    
+    if (cancelRegisterBtn) {
+        cancelRegisterBtn.addEventListener('click', () => showView('search'));
+    }
+
+    if (!registerForm) return;
+    
+    // Restaurar y configurar el componente de subida de archivos
+    const fileUploadPartial = document.getElementById('fileUploadPartial');
+    if (fileUploadPartial) {
+        fileUploadPartial.innerHTML = fileUploadComponent;
+        setupFileUpload(); // Configurar los eventos para el componente recién insertado
+    }
+
+    // Referencias a elementos del DOM
+    const clientSelect = document.getElementById('client_id');
+    const admNameInput = document.getElementById('adm_name');
+    const admIdInput = document.getElementById('adm_id');
+
+    // Cargar y poblar los desplegables
+    try {
+        allClientsData = await fetchAllClientsWithAdm();
+        populateSelect(clientSelect.id, allClientsData, 'Seleccione un cliente');
+
+        const models = await fetchPrinterModels();
+        populateSelect('printer_model_id', models, 'Seleccione un modelo');
+    } catch (e) {
+        console.error("Failed to populate form selects", e);
+    }
+
+    // Event listener para cuando se seleccione un Cliente
+    if (clientSelect) {
+        clientSelect.addEventListener('change', (e) => {
+            const selectedClientId = e.target.value;
+            const selectedClient = allClientsData.find(c => c.id === selectedClientId);
+            
+            if (selectedClient && selectedClient.adm) {
+                admNameInput.value = selectedClient.adm.name;
+                admIdInput.value = selectedClient.adm.id;
+            } else {
+                admNameInput.value = '';
+                admIdInput.value = '';
             }
         });
-        
-        console.log('Datos a enviar:', cleanData);
-        console.log('User ID:', getUserId());
-        console.log('Is Auth Ready:', getIsAuthReady());
-        
-        if (!cleanData.serie) {
-            showMessage('El campo SERIE es obligatorio.', 3000);
-            return;
-        }
-        
-        // Verificar que el user_id sea válido
-        if (!cleanData.user_id) {
-            console.error('User ID no válido:', cleanData.user_id);
-            showMessage('Error de autenticación. Por favor, inicia sesión nuevamente.', 4000);
-            return;
-        }
-        
-        const supabase = getSupabase();
-        try {
-            console.log('Intentando insertar en Supabase...');
-            const { data: inserted, error } = await supabase
-                .from('printers')
-                .insert(cleanData)
-                .select('id');
-            if (error) {
-                console.error('Error de Supabase:', error);
-                console.error('Código de error:', error.code);
-                console.error('Mensaje de error:', error.message);
-                console.error('Detalles del error:', error.details);
-                console.error('Hint del error:', error.hint);
-                if (error.code === '23505') {
-                    showMessage('Ya existe una impresora con esa serie.', 4000);
-                } else {
-                    showMessage('Error al guardar: ' + error.message, 4000);
-                }
-                return;
-            }
-            console.log('Inserción exitosa:', inserted);
-            // Subida de archivos con categoría
-            const printerId = inserted[0].id;
-            await uploadAllFiles(printerId);
-            showMessage('Registro guardado correctamente.', 2000);
-            showView('search');
-        } catch (error) {
-            console.error('Error capturado:', error);
-            console.error('Stack trace:', error.stack);
-            showMessage('Error al guardar: ' + error.message, 4000);
-        }
-    };
-    document.getElementById('cancelRegisterBtn').onclick = () => showView('search');
-    setupFileCategoryEvents();
-    setupFileUpload(); // Configurar la funcionalidad de subida de archivos
-}
+    }
 
-async function uploadAllFiles(printerId) {
-    const supabase = getSupabase();
-    const userId = getUserId();
-    const fileCategory = document.getElementById('fileCategorySelect')?.value || 'general';
-    
-    // Solo procesar archivos si hay archivos para subir
-    if (uploadedFiles.length === 0) {
-        console.log('No hay archivos para subir');
-        return;
-    }
-    
-    for (const fileObj of uploadedFiles) {
-        if (fileObj.file) {
-            const filePath = `${userId}/${printerId}/${fileObj.name}`;
-            // Subir a Storage
-            const { error: storageError } = await supabase.storage
-                .from('printer-documents')
-                .upload(filePath, fileObj.file, { cacheControl: '3600', upsert: true });
-            if (storageError) {
-                showMessage('Error al subir archivo: ' + storageError.message, 4000);
-                continue;
-            }
-            // Obtener URL pública
-            const { data: publicUrlData } = supabase.storage
-                .from('printer-documents')
-                .getPublicUrl(filePath);
-            // Insertar metadatos
-            const fileMetadata = {
-                printer_id: printerId,
-                file_name: fileObj.name,
-                file_size: fileObj.size,
-                file_type: fileObj.type,
-                storage_path: filePath,
-                download_url: publicUrlData.publicUrl,
-                file_category: fileCategory,
-                user_id: userId
-            };
-            await supabase.from('printer_files').insert(fileMetadata);
-        }
-    }
-    
-    // Solo resetear archivos si estamos en una vista donde el elemento fileList existe
-    try {
-        resetFiles();
-        updateFileList();
-    } catch (error) {
-        console.warn('No se pudo resetear la lista de archivos:', error);
-        // Limpiar el array de archivos de todas formas
-        uploadedFiles.length = 0;
-    }
-}
+    registerForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(registerForm);
 
-function setupFileCategoryEvents() {
-    // Puedes usar este hook para manejar la categoría de archivos al subir
-    const fileCategorySelect = document.getElementById('fileCategorySelect');
-    if (fileCategorySelect) {
-        fileCategorySelect.onchange = () => {
-            // Aquí puedes guardar la categoría seleccionada para usarla al subir archivos
-            // Ejemplo: window.selectedFileCategory = fileCategorySelect.value;
+        const printerData = {
+            serie: formData.get('serie'),
+            client_id: formData.get('client_id'),
+            printer_model_id: formData.get('printer_model_id'),
+            current_estado: formData.get('current_estado'),
+            current_observaciones: formData.get('current_observaciones'),
+            user_id: getUserId(),
+            // Nuevos campos de contacto y ubicación
+            current_contacto: formData.get('current_contacto'),
+            current_empresa: formData.get('current_empresa'),
+            current_direccion: formData.get('current_direccion'),
+            current_dpto: formData.get('current_dpto'),
+            current_provincia: formData.get('current_provincia'),
+            current_distrito: formData.get('current_distrito'),
+            current_sede: formData.get('current_sede')
         };
+
+        if (!printerData.client_id || !printerData.printer_model_id) {
+            alert('Por favor, seleccione un cliente y un modelo.');
+            return;
+        }
+
+        console.log("Attempting to insert printer:", printerData);
+
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+            .from('printers')
+            .insert(printerData)
+            .select('id')
+            .single();
+
+        if (error) {
+            console.error('Error creating record:', error);
+            alert(`Error al guardar el registro: ${error.message}`);
+            return;
+        }
+
+        console.log("Record created successfully:", data);
+        const newPrinterId = data.id;
+
+        // Subir archivos si los hay
+        if (uploadedFiles.length > 0) {
+            await uploadAllFiles(newPrinterId);
+        }
+
+        // Mostrar mensaje de éxito y regresar a la búsqueda
+        showMessage('Registro guardado con éxito.', 2000);
+        showView('search');
+    };
+}
+
+async function fetchAllClientsWithAdm() {
+    console.log("Fetching all clients with their ADM...");
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from('clients')
+        .select(`
+            id, 
+            name, 
+            adm:adms(id, name)
+        `)
+        .order('name');
+    
+    if (error) {
+        console.error("Error fetching clients with ADM:", error);
+        alert("No se pudieron cargar los clientes. Revisa los permisos (RLS) en la consola de Supabase y asegúrate de que el usuario actual puede verlos.");
+        return [];
     }
+    console.log("Clients with ADM fetched:", data);
+    return data;
+}
+
+async function fetchClientsByAdm(admId) {
+    console.log("Fetching clients for ADM:", admId);
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('adm_id', admId)
+        .order('name');
+    if (error) {
+        console.error("Error fetching clients for ADM:", error);
+        return [];
+    }
+    console.log("Clients for ADM fetched:", data);
+    return data;
+}
+
+async function fetchAdms() {
+    console.log("Fetching ADMs...");
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from('adms').select('id, name').order('name');
+    if (error) {
+        console.error("Error fetching ADMs:", error);
+        alert("No se pudieron cargar los ADMs. Revise la consola.");
+        return [];
+    }
+    console.log("ADMs fetched:", data);
+    return data;
+}
+
+async function fetchPrinterModels() {
+    console.log("Fetching printer models...");
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from('printer_models').select('id, name').order('name');
+    if (error) {
+        console.error("Error fetching printer models:", error);
+        alert("No se pudieron cargar los modelos de impresora. Revise la consola.");
+        return [];
+    }
+    console.log("Printer models fetched:", data);
+    return data;
+}
+
+function populateSelect(selectId, items, placeholder) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    items.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = item.name;
+        select.appendChild(option);
+    });
 }
 
 // VISTA 4: Resultados
 function setupResultsEvents(data) {
-    console.log('Configurando vista de resultados con datos:', data);
-    const resultsList = document.getElementById('resultsList');
-    
-    if (!resultsList) {
-        console.error('Elemento resultsList no encontrado');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultItemTemplate = document.getElementById('result-item-template');
+    const newSearchBtn = document.getElementById('newSearchBtn');
+
+    if (!resultsContainer || !resultItemTemplate || !newSearchBtn) {
+        console.error("Faltan elementos en la vista de resultados.");
         return;
     }
-    
-    if (!data || data.length === 0) {
-        console.log('No hay datos para mostrar');
-        resultsList.innerHTML = '<li class="list-group-item">No se encontraron resultados.</li>';
-    } else {
-        console.log('Mostrando', data.length, 'resultados');
-        resultsList.innerHTML = data.map(item => `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <span><b>${item.serie || 'Sin serie'}</b> - ${item.current_cliente || 'Sin cliente'} (${item.current_modelo || 'Sin modelo'}) <span class="badge bg-info">${item.current_estado || 'Sin estado'}</span></span>
-                <button class="btn btn-primary btn-sm editResultBtn" data-id="${item.id}"><i class="fas fa-edit"></i> Editar</button>
-            </li>
-        `).join('');
-        
-        const editButtons = document.querySelectorAll('.editResultBtn');
-        console.log('Botones de editar encontrados:', editButtons.length);
-        
-        editButtons.forEach(btn => {
-            btn.onclick = (e) => {
-                const id = e.currentTarget.dataset.id;
-                console.log('Editando impresora con ID:', id);
-                lastEditData = data.find(x => x.id == id);
-                showView('edit', lastEditData);
-            };
+
+    // Funcionalidad del botón Nueva Búsqueda
+    newSearchBtn.onclick = () => showView('search');
+
+    resultsContainer.innerHTML = ''; // Limpiar resultados anteriores
+
+    if (data && data.length > 0) {
+        data.forEach(printer => {
+            const clone = resultItemTemplate.content.cloneNode(true);
+            const card = clone.querySelector('.result-item-card');
+            
+            // Guardamos el objeto completo en el dataset para pasarlo a la vista de detalle
+            card.dataset.printerData = JSON.stringify(printer);
+
+            clone.querySelector('.result-item-serie').textContent = printer.serie;
+            clone.querySelector('.result-item-cliente').textContent = printer.client?.name || 'N/A';
+            clone.querySelector('.result-item-modelo').textContent = printer.model?.name || 'N/A';
+            
+            const estadoBadge = clone.querySelector('.result-item-estado');
+            estadoBadge.textContent = printer.current_estado;
+            estadoBadge.className = `badge bg-${getEstadoColor(printer.current_estado)}`;
+
+            const admElement = clone.querySelector('.result-item-adm');
+            if (admElement) {
+                admElement.textContent = `ADM: ${printer.client?.adm?.name || 'N/A'}`;
+            }
+
+            resultsContainer.appendChild(clone);
         });
+
+        // Añadir evento de clic a cada tarjeta de resultado
+        document.querySelectorAll('.result-item-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                e.preventDefault();
+                const printerData = JSON.parse(card.dataset.printerData);
+                showView('detail', printerData);
+            });
+        });
+
+    } else {
+        resultsContainer.innerHTML = '<p class="text-center text-muted mt-3">No se encontraron registros con ese criterio.</p>';
     }
-    document.getElementById('backToSearchBtn').onclick = () => showView('search');
 }
 
 // VISTA DE DETALLE (NUEVA)
-function setupDetailEvents(data) {
-    if (!data) {
-        showMessage('No hay datos para mostrar', 3000);
+async function setupDetailEvents(data) {
+    // El objeto 'data' es ahora el registro de la impresora que viene de la búsqueda o de la lista de resultados.
+    if (!data || !data.id) {
+        showMessage('Error: No se pudo cargar la información del registro.', 3000);
         showView('search');
         return;
     }
 
-    lastEditData = data; // Guardamos los datos para el botón de editar
+    // Establecemos el ID y los datos actuales para usarlos en otras partes (como los botones de edición)
+    currentRecordId = data.id;
+    lastEditData = data; 
 
-    // Rellenar la información de solo lectura
-    document.getElementById('detail_serie').textContent = data.serie || 'N/A';
-    document.getElementById('detail_modelo').textContent = data.current_modelo || 'N/A';
-    document.getElementById('detail_cliente').textContent = data.current_cliente || 'N/A';
-    const estadoBadge = document.getElementById('detail_estado');
-    estadoBadge.textContent = data.current_estado || 'Sin estado';
-    estadoBadge.className = `badge bg-${getEstadoColor(data.current_estado)}`;
-    document.getElementById('detail_observaciones').textContent = data.current_observaciones || 'Sin observaciones.';
+    // Rellenar la vista con los datos que ya tenemos, sin necesidad de volver a consultar
+    document.getElementById('detail-serie').textContent = data.serie || 'N/A';
+    document.getElementById('detail-cliente').textContent = data.client?.name || 'N/A';
+    document.getElementById('detail-modelo').textContent = data.model?.name || 'N/A';
+    const estadoBadge = document.getElementById('detail-estado');
+    if(estadoBadge) {
+        estadoBadge.textContent = data.current_estado || 'N/A';
+        estadoBadge.className = `badge bg-${getEstadoColor(data.current_estado)}`;
+    }
+    document.getElementById('detail-observaciones').textContent = data.current_observaciones || 'Sin observaciones.';
+    
+    // Rellenar campos de contacto/ubicación
+    document.getElementById('detail-contacto').textContent = data.current_contacto || 'N/A';
+    document.getElementById('detail-direccion').textContent = data.current_direccion || 'N/A';
+    
+    const sedeZona = [data.current_sede, data.current_zona].filter(Boolean).join(' / ');
+    document.getElementById('detail-sede-zona').textContent = sedeZona || 'N/A';
 
-    // Renderizar historial y archivos
+    const empresaDpto = [data.current_empresa, data.current_dpto].filter(Boolean).join(' / ');
+    document.getElementById('detail-empresa-dpto').textContent = empresaDpto || 'N/A';
+
+    const admInfo = document.querySelector('#detail-adm'); // Usamos un ID específico
+    if (admInfo) {
+        admInfo.textContent = data.client?.adm?.name || 'N/A';
+    }
+
+    // Renderizar historial y archivos (estas funciones sí necesitan hacer su propia consulta)
     renderPrinterHistory(data.id, 'historyContainer');
     renderPrinterFiles(data.id, 'filesContainer');
 
     // Asignar eventos a los botones
-    document.getElementById('editPrinterBtn').onclick = () => {
-        showView('edit', data);
-    };
+    document.getElementById('editStatusBtn').onclick = () => showView('edit_status', data);
+    document.getElementById('editClientBtn').onclick = () => showView('edit_client', data);
+    document.getElementById('editContactBtn').onclick = () => showView('edit_contact', data);
     document.getElementById('backToSearchBtn').onclick = () => {
         showView('search');
     };
@@ -364,76 +453,6 @@ function getEstadoColor(estado) {
         case 'almacenado': return 'dark';
         default: return 'light';
     }
-}
-
-// VISTA 5: Edición
-function setupEditEvents(data) {
-    if (data) {
-        document.getElementById('serie').value = data.serie || '';
-        document.getElementById('current_modelo').value = data.current_modelo || '';
-        document.getElementById('current_cliente').value = data.current_cliente || '';
-        document.getElementById('current_contacto').value = data.current_contacto || '';
-        document.getElementById('current_direccion').value = data.current_direccion || '';
-        document.getElementById('current_sede').value = data.current_sede || '';
-        document.getElementById('current_empresa').value = data.current_empresa || '';
-        document.getElementById('current_dpto').value = data.current_dpto || '';
-        document.getElementById('current_provincia').value = data.current_provincia || '';
-        document.getElementById('current_distrito').value = data.current_distrito || '';
-        document.getElementById('current_zona').value = data.current_zona || '';
-        document.getElementById('current_estado').value = data.current_estado || '';
-        document.getElementById('current_observaciones').value = data.current_observaciones || '';
-        // Renderizar historial y archivos en la vista de edición
-        renderPrinterHistory(data.id, 'editHistoryContainer');
-        renderPrinterFiles(data.id, 'editFilesContainer');
-    }
-    document.getElementById('editForm').onsubmit = async (e) => {
-        e.preventDefault();
-        if (!getIsAuthReady() || !getUserId()) {
-            showMessage('Debes iniciar sesión.', 3000);
-            return;
-        }
-        const form = e.target;
-        const updateData = {
-            serie: form.serie.value.trim(),
-            current_modelo: form.current_modelo.value.trim(),
-            current_cliente: form.current_cliente.value.trim(),
-            current_contacto: form.current_contacto.value.trim(),
-            current_direccion: form.current_direccion.value.trim(),
-            current_sede: form.current_sede.value.trim(),
-            current_empresa: form.current_empresa.value.trim(),
-            current_dpto: form.current_dpto.value.trim(),
-            current_provincia: form.current_provincia.value.trim(),
-            current_distrito: form.current_distrito.value.trim(),
-            current_zona: form.current_zona.value.trim(),
-            current_estado: form.current_estado.value,
-            current_observaciones: form.current_observaciones.value.trim(),
-            user_id: getUserId()
-        };
-        if (!updateData.serie) {
-            showMessage('El campo SERIE es obligatorio.', 3000);
-            return;
-        }
-        const supabase = getSupabase();
-        try {
-            const { error } = await supabase
-                .from('printers')
-                .update(updateData)
-                .eq('id', data.id);
-            if (error) {
-                showMessage('Error al actualizar: ' + error.message, 4000);
-                return;
-            }
-            // Subida de archivos con categoría
-            await uploadAllFiles(data.id);
-            showMessage('Registro actualizado correctamente.', 2000);
-            showView('search');
-        } catch (error) {
-            showMessage('Error al actualizar: ' + error.message, 4000);
-        }
-    };
-    document.getElementById('cancelEditBtn').onclick = () => showView('search');
-    setupFileCategoryEvents();
-    setupFileUpload(); // Configurar la funcionalidad de subida de archivos
 }
 
 // Mostrar historial de la impresora (MODIFICADA)
@@ -473,19 +492,19 @@ async function renderPrinterHistory(printerId, containerId) {
             `).join('');
         }
     } catch (error) {
-        console.error('Error detallado al cargar historial:', error); // Log del error
+        console.error('Error detallado al cargar historial:', error);
         if(historyList) historyList.innerHTML = '<div class="alert alert-danger small">Error al cargar historial. Revisa la consola para más detalles.</div>';
     }
 }
 
-// Mostrar archivos agrupados por categoría (MODIFICADA)
+// Mostrar archivos agrupados por categoría
 async function renderPrinterFiles(printerId, containerId) {
     const filesContainer = document.getElementById(containerId);
     if (!filesContainer) {
         console.error(`Contenedor de archivos '${containerId}' no encontrado.`);
         return;
     }
-    filesContainer.innerHTML = '<div id="filesList">Cargando...</div>'; // Limpiado
+    filesContainer.innerHTML = '<div id="filesList">Cargando...</div>';
     const filesList = document.getElementById('filesList');
 
     try {
@@ -516,71 +535,369 @@ async function renderPrinterFiles(printerId, containerId) {
             `).join('');
         }
     } catch (error) {
-        console.error('Error detallado al cargar archivos:', error); // Log del error
+        console.error('Error detallado al cargar archivos:', error);
         if(filesList) filesList.innerHTML = '<div class="alert alert-danger small">Error al cargar archivos. Revisa la consola para más detalles.</div>';
     }
 }
 
-// Función de prueba para diagnosticar problemas de datos
-async function testSupabaseConnection() {
-    console.log('=== PRUEBA DE CONEXIÓN SUPABASE ===');
+// Función genérica para manejar la actualización
+async function handleUpdate(printerId, updateData, successMessage) {
+    if (Object.keys(updateData).length === 0) {
+        showMessage('No se realizaron cambios.', 2000);
+        return;
+    }
     const supabase = getSupabase();
-    const userId = getUserId();
-    
-    console.log('User ID actual:', userId);
-    console.log('Is Auth Ready:', getIsAuthReady());
-    
     try {
-        // Prueba 1: Contar todos los registros sin filtro
-        console.log('Prueba 1: Contando todos los registros...');
-        const { count: totalCount, error: countError } = await supabase
+        const { data: updatedRecord, error } = await supabase
             .from('printers')
-            .select('*', { count: 'exact', head: true });
-        
-        console.log('Total de registros en la tabla:', totalCount);
-        if (countError) console.error('Error al contar:', countError);
-        
-        // Prueba 2: Obtener todos los registros sin filtro
-        console.log('Prueba 2: Obteniendo todos los registros...');
-        const { data: allData, error: allError } = await supabase
-            .from('printers')
-            .select('*')
-            .limit(5);
-        
-        console.log('Primeros 5 registros:', allData);
-        if (allError) console.error('Error al obtener todos:', allError);
-        
-        // Prueba 3: Buscar por user_id específico
-        console.log('Prueba 3: Buscando por user_id =', userId);
-        const { data: userData, error: userError } = await supabase
-            .from('printers')
-            .select('*')
-            .eq('user_id', userId);
-        
-        console.log('Registros del usuario actual:', userData);
-        if (userError) console.error('Error al buscar por user_id:', userError);
-        
-        // Prueba 4: Verificar estructura de un registro
-        if (userData && userData.length > 0) {
-            console.log('Prueba 4: Estructura del primer registro:', userData[0]);
-            console.log('Campos disponibles:', Object.keys(userData[0]));
-        }
-        
+            .update(updateData)
+            .eq('id', printerId)
+            .select();
+        if (error) throw error;
+
+        showMessage(successMessage, 2000);
+        showView('detail', updatedRecord[0]);
+
     } catch (error) {
-        console.error('Error en prueba de conexión:', error);
+        showMessage('Error al actualizar: ' + error.message, 4000);
     }
 }
 
-// Agregar botón de prueba temporal
-function addTestButton() {
-    const searchSection = document.querySelector('.form-section');
-    if (searchSection) {
-        const testBtn = document.createElement('button');
-        testBtn.className = 'btn btn-warning mt-2';
-        testBtn.innerHTML = '<i class="fas fa-bug"></i> Prueba de Conexión';
-        testBtn.onclick = testSupabaseConnection;
-        searchSection.appendChild(testBtn);
+// FUNCIONES DE SETUP PARA FORMULARIOS DE EDICIÓN
+function setupEditStatusEvents(data) {
+    document.getElementById('form_serie_display').textContent = data.serie;
+
+    const form = document.getElementById('editStatusForm');
+    form.current_estado.value = data.current_estado;
+    form.current_observaciones.value = data.current_observaciones;
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const updateData = {
+            current_estado: form.current_estado.value,
+            current_observaciones: form.current_observaciones.value.trim()
+        };
+        await handleUpdate(data.id, updateData, 'Estado actualizado.');
+    };
+    document.getElementById('cancelBtn').onclick = () => showView('detail', data);
+}
+
+async function setupEditClientEvents(data) {
+    const form = document.getElementById('editClientForm');
+    if (!form) return;
+
+    // Poblar la UI antes de configurar el formulario
+    const supabase = getSupabase();
+    const { data: printer, error: printerError } = await supabase
+        .from('printers')
+        .select(`
+            serie, 
+            client_id,
+            client:clients(adm_id)
+        `)
+        .eq('id', currentRecordId)
+        .single();
+    
+    if (printerError) {
+        alert('No se pudo cargar la información de la impresora.');
+        return;
     }
+    
+    document.getElementById('edit-client-serie').textContent = printer.serie;
+
+    // Cargar ADMs y seleccionar el actual
+    const adms = await fetchAdms();
+    populateSelect('adm_id', adms, 'Seleccione un ADM');
+    form.adm_id.value = printer.client?.adm_id || '';
+
+    // Cargar clientes del ADM actual
+    if (printer.client?.adm_id) {
+        const clients = await fetchClientsByAdm(printer.client.adm_id);
+        populateSelect('client_id', clients, 'Seleccione un nuevo cliente');
+        form.client_id.disabled = false;
+        form.client_id.value = printer.client_id;
+    }
+    
+    // Event listener para cuando se seleccione un ADM
+    const admSelect = document.getElementById('adm_id');
+    if (admSelect) {
+        admSelect.addEventListener('change', async (e) => {
+            const clientSelect = document.getElementById('client_id');
+            if (e.target.value) {
+                const clients = await fetchClientsByAdm(e.target.value);
+                populateSelect('client_id', clients, 'Seleccione un nuevo cliente');
+                clientSelect.disabled = false;
+            } else {
+                clientSelect.innerHTML = '<option value="">Primero seleccione un ADM</option>';
+                clientSelect.disabled = true;
+            }
+        });
+    }
+    
+    document.getElementById('cancelEditClientBtn')?.addEventListener('click', () => showView('detail', lastEditData));
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const newClientId = formData.get('client_id');
+        const nuevoEstado = formData.get('current_estado');
+        const observaciones = formData.get('observaciones');
+
+        if (!newClientId) {
+            alert('Por favor, seleccione un cliente.');
+            return;
+        }
+
+        // 1. Preparar el objeto de actualización
+        const updateData = { client_id: newClientId };
+        if (nuevoEstado) {
+            updateData.current_estado = nuevoEstado;
+        }
+
+        // 2. Actualizar la impresora y pedir el registro actualizado
+        const supabase = getSupabase();
+        const { data: updatedPrinter, error: updateError } = await supabase
+            .from('printers')
+            .update(updateData)
+            .eq('id', currentRecordId)
+            .select(`
+                *,
+                client:clients(name, adm:adms(name)),
+                model:printer_models(name)
+            `)
+            .single();
+
+        if (updateError) {
+            alert('Error al reasignar el cliente: ' + updateError.message);
+            return;
+        }
+
+        // 3. Añadir entrada al historial
+        await addHistoryEntry('client_change', `Cliente reasignado.`, {
+            field: 'client_id',
+            new_value: newClientId,
+            observaciones: observaciones
+        });
+
+        alert('Cliente reasignado con éxito.');
+        // 4. Volver a la vista de detalle con los datos frescos
+        showView('detail', updatedPrinter);
+    };
+}
+
+function setupEditContactEvents(data) {
+    document.getElementById('form_serie_display').textContent = data.serie;
+
+    const form = document.getElementById('editContactForm');
+    // Rellenar todos los campos del formulario de contacto
+    form.current_direccion.value = data.current_direccion || '';
+    form.current_sede.value = data.current_sede || '';
+    form.current_dpto.value = data.current_dpto || '';
+    // ... etc para todos los campos
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const updateData = {
+            current_direccion: form.current_direccion.value.trim(),
+            current_sede: form.current_sede.value.trim(),
+            // ... etc para todos los campos
+        };
+        if (form.current_estado.value) {
+            updateData.current_estado = form.current_estado.value;
+        }
+        await handleUpdate(data.id, updateData, 'Ubicación actualizada.');
+    };
+    document.getElementById('cancelBtn').onclick = () => showView('detail', data);
+}
+
+async function setupEditModelEvents(data) {
+    const form = document.getElementById('editModelForm');
+    if (!form) return;
+
+    // Poblar la UI
+    const supabase = getSupabase();
+    const { data: printer, error: printerError } = await supabase.from('printers').select('serie, printer_model_id').eq('id', currentRecordId).single();
+    if (printerError) {
+        alert('No se pudo cargar la información de la impresora.');
+        return;
+    }
+    document.getElementById('edit-model-serie').textContent = printer.serie;
+
+    const models = await fetchPrinterModels();
+    populateSelect('printer_model_id', models, 'Seleccione un nuevo modelo');
+    form.printer_model_id.value = printer.printer_model_id;
+    
+    document.getElementById('cancelEditModelBtn')?.addEventListener('click', () => showView('detail'));
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const newModelId = formData.get('printer_model_id');
+        const observaciones = formData.get('observaciones');
+
+        if (!newModelId) {
+            alert('Por favor, seleccione un modelo.');
+            return;
+        }
+
+        // 1. Actualizar la impresora y pedir el registro actualizado
+        const supabase = getSupabase();
+        const { data: updatedPrinter, error: updateError } = await supabase
+            .from('printers')
+            .update({ printer_model_id: newModelId })
+            .eq('id', currentRecordId)
+            .select(`
+                *,
+                client:clients(name, adm:adms(name)),
+                model:printer_models(name)
+            `)
+            .single();
+
+        if (updateError) {
+            alert('Error al cambiar el modelo: ' + updateError.message);
+            return;
+        }
+
+        // 2. Añadir entrada al historial
+        await addHistoryEntry('model_change', `Modelo de impresora cambiado.`, {
+            field: 'printer_model_id',
+            new_value: newModelId,
+            observaciones: observaciones
+        });
+
+        alert('Modelo cambiado con éxito.');
+        // 3. Volver a la vista de detalle con los datos frescos
+        showView('detail', updatedPrinter);
+    };
+}
+
+async function addHistoryEntry(changeType, changeDescription, additionalData = {}) {
+    if (!currentRecordId) {
+        console.error('No hay ID de impresora actual para añadir historial');
+        return;
+    }
+
+    try {
+        // Obtener información actual de la impresora para el historial
+        const supabase = getSupabase();
+        const { data: printer, error: printerError } = await supabase
+            .from('printers')
+            .select(`
+                serie,
+                client_id,
+                printer_model_id,
+                current_contacto,
+                current_direccion,
+                current_sede,
+                current_empresa,
+                current_dpto,
+                current_provincia,
+                current_distrito,
+                current_zona,
+                current_estado,
+                current_observaciones,
+                client:clients(name, adm:adms(id))
+            `)
+            .eq('id', currentRecordId)
+            .single();
+
+        if (printerError) {
+            console.error('Error obteniendo datos de impresora para historial:', printerError);
+            return;
+        }
+
+        const historyData = {
+            printer_id: currentRecordId,
+            serie: printer.serie,
+            client_id: printer.client_id,
+            printer_model_id: printer.printer_model_id,
+            adm_id: printer.client?.adm?.id,
+            cliente: printer.client?.name,
+            contacto: printer.current_contacto,
+            direccion: printer.current_direccion,
+            sede: printer.current_sede,
+            empresa: printer.current_empresa,
+            dpto: printer.current_dpto,
+            provincia: printer.current_provincia,
+            distrito: printer.current_distrito,
+            zona: printer.current_zona,
+            estado: printer.current_estado,
+            observaciones: printer.current_observaciones,
+            change_type: changeType,
+            change_description: changeDescription,
+            change_reason: additionalData.observaciones || null
+        };
+
+        const { error: historyError } = await supabase
+            .from('printer_history')
+            .insert(historyData);
+
+        if (historyError) {
+            console.error('Error insertando en historial:', historyError);
+        } else {
+            console.log('Entrada de historial añadida correctamente');
+        }
+    } catch (error) {
+        console.error('Error en addHistoryEntry:', error);
+    }
+}
+
+async function uploadAllFiles(printerId) {
+    const supabase = getSupabase();
+    const userId = getUserId();
+    const fileCategorySelect = document.getElementById('fileCategorySelect');
+    const fileCategory = fileCategorySelect ? fileCategorySelect.value : 'general';
+
+    if (uploadedFiles.length === 0) {
+        return; // No files to upload
+    }
+
+    for (const fileObj of uploadedFiles) {
+        if (fileObj.file) {
+            const filePath = `${userId}/${printerId}/${fileObj.name}`;
+            
+            // Subir a Storage
+            const { error: storageError } = await supabase.storage
+                .from('printer-documents') // Nombre del bucket
+                .upload(filePath, fileObj.file, { cacheControl: '3600', upsert: true });
+
+            if (storageError) {
+                console.error('Error uploading file:', storageError);
+                showMessage('Error al subir archivo: ' + storageError.message, 4000);
+                continue; // Ir al siguiente archivo
+            }
+
+            // Obtener URL pública
+            const { data: publicUrlData } = supabase.storage
+                .from('printer-documents')
+                .getPublicUrl(filePath);
+            
+            if (!publicUrlData || !publicUrlData.publicUrl) {
+                 console.error('Error getting public URL for file:', filePath);
+                 continue;
+            }
+
+            // Insertar metadatos en la tabla printer_files
+            const fileMetadata = {
+                printer_id: printerId,
+                file_name: fileObj.name,
+                file_size: fileObj.size,
+                file_type: fileObj.type,
+                storage_path: filePath,
+                download_url: publicUrlData.publicUrl,
+                file_category: fileCategory,
+                user_id: userId
+            };
+
+            const { error: dbError } = await supabase.from('printer_files').insert(fileMetadata);
+            if (dbError) {
+                console.error('Error inserting file metadata:', dbError);
+                showMessage('Error al guardar metadatos del archivo: ' + dbError.message, 4000);
+            }
+        }
+    }
+    // Limpiar la lista de archivos después de subirlos
+    resetFiles();
 }
 
 // Inicialización
@@ -589,7 +906,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Añadir navegación al logo
     const logo = document.getElementById('logo');
     if (logo) {
-        logo.style.cursor = 'pointer'; // Cambiar cursor para indicar que es clickeable
+        logo.style.cursor = 'pointer';
         logo.addEventListener('click', () => {
             if (getIsAuthReady()) {
                 showView('search');
@@ -598,4 +915,4 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     showView('auth');
-}); 
+});

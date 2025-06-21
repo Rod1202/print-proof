@@ -1,92 +1,85 @@
 <div class="form-section">
-    <h5>Registrar nueva impresora</h5>
+    <h5 class="text-center mb-4">Registrar Nueva Impresora</h5>
     <form id="registerForm">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">SERIE</label>
-                <input type="text" class="form-control" id="serie" name="serie" required>
+        
+        <!-- === Sección de Información de la Impresora === -->
+        <fieldset class="mb-4 p-3 border rounded">
+            <legend class="h6">Información de la Impresora</legend>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">SERIE</label>
+                    <input type="text" class="form-control" id="serie" name="serie" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">MODELO DE IMPRESORA</label>
+                    <select class="form-select" id="printer_model_id" name="printer_model_id" required>
+                        <option value="">Cargando modelos...</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">ESTADO INICIAL</label>
+                    <select class="form-select" id="current_estado" name="current_estado">
+                        <option value="almacenado">Almacenado</option>
+                        <option value="produccion">Producción</option>
+                        <option value="backup">Backup</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">OBSERVACIONES</label>
+                    <textarea class="form-control" id="current_observaciones" name="current_observaciones" rows="1"></textarea>
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">MODELO</label>
-                <input type="text" class="form-control" id="current_modelo" name="current_modelo">
+        </fieldset>
+
+        <!-- === Sección de Información del Cliente === -->
+        <fieldset class="mb-4 p-3 border rounded">
+            <legend class="h6">Información del Cliente</legend>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">CLIENTE</label>
+                    <select class="form-select" id="client_id" name="client_id" required>
+                        <option value="">Cargando clientes...</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">ADM (Automático)</label>
+                    <input type="text" class="form-control" id="adm_name" name="adm_name" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">CONTACTO</label>
+                    <input type="text" class="form-control" id="current_contacto" name="current_contacto">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">EMPRESA</label>
+                    <input type="text" class="form-control" id="current_empresa" name="current_empresa">
+                </div>
+                 <div class="col-md-12">
+                    <label class="form-label">DIRECCIÓN</label>
+                    <input type="text" class="form-control" id="current_direccion" name="current_direccion">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">DEPARTAMENTO</label>
+                    <input type="text" class="form-control" id="current_dpto" name="current_dpto">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">PROVINCIA</label>
+                    <input type="text" class="form-control" id="current_provincia" name="current_provincia">
+                </div>
+                 <div class="col-md-6">
+                    <label class="form-label">DISTRITO</label>
+                    <input type="text" class="form-control" id="current_distrito" name="current_distrito">
+                </div>
+                 <div class="col-md-6">
+                    <label class="form-label">SEDE / ZONA</label>
+                    <input type="text" class="form-control" id="current_sede" name="current_sede">
+                </div>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">CLIENTE</label>
-                <input type="text" class="form-control" id="current_cliente" name="current_cliente">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">CONTACTO</label>
-                <input type="text" class="form-control" id="current_contacto" name="current_contacto">
-            </div>
-            <div class="col-12">
-                <label class="form-label">DIRECCIÓN</label>
-                <input type="text" class="form-control" id="current_direccion" name="current_direccion">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">SEDE</label>
-                <input type="text" class="form-control" id="current_sede" name="current_sede">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">EMPRESA</label>
-                <input type="text" class="form-control" id="current_empresa" name="current_empresa">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">DPTO.</label>
-                <input type="text" class="form-control" id="current_dpto" name="current_dpto">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">PROVINCIA</label>
-                <input type="text" class="form-control" id="current_provincia" name="current_provincia">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">DISTRITO</label>
-                <input type="text" class="form-control" id="current_distrito" name="current_distrito">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">ZONA</label>
-                <input type="text" class="form-control" id="current_zona" name="current_zona">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">ESTADO</label>
-                <select class="form-select" id="current_estado" name="current_estado">
-                    <option value="">Seleccionar estado</option>
-                    <option value="produccion">Producción</option>
-                    <option value="backup">Backup</option>
-                    <option value="reportado">Reportado</option>
-                    <option value="cambiado">Cambiado</option>
-                    <option value="taller">En Taller</option>
-                    <option value="almacenado">Almacenado</option>
-                </select>
-            </div>
-            <div class="col-12">
-                <label class="form-label">OBSERVACIONES</label>
-                <textarea class="form-control" id="current_observaciones" name="current_observaciones" rows="3"></textarea>
-            </div>
-        </div>
-        <div class="form-section mt-4">
-            <div class="section-title">Archivos</div>
-            <div class="file-upload-area" id="fileUploadArea">
-                <i class="fas fa-paperclip fa-2x mb-2 text-muted"></i>
-                <div>Haz clic aquí o arrastra archivos para subir</div>
-                <small class="text-muted">PDF, DOC, IMG - Máximo 10MB por archivo</small>
-                <input type="file" id="fileInput" style="display: none;" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.txt">
-            </div>
-            <div class="file-list" id="fileList"></div>
-            <div class="d-flex justify-content-center mt-2 gap-2">
-                <button type="button" class="btn btn-outline-primary" id="takePhotoBtn">
-                    <i class="fas fa-camera"></i> Tomar Foto
-                </button>
-                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
-                <select class="form-select w-auto" id="fileCategorySelect">
-                    <option value="general">General</option>
-                    <option value="manual">Manual</option>
-                    <option value="warranty">Garantía</option>
-                    <option value="maintenance">Mantenimiento</option>
-                    <option value="photo">Foto</option>
-                    <option value="report">Reporte</option>
-                </select>
-            </div>
-        </div>
+        </fieldset>
+        
+        <!-- === Sección de Archivos === -->
+        <div id="fileUploadPartial" class="mb-4"></div>
+
+        <!-- === Botones de Acción === -->
         <div class="d-flex gap-2 mt-4 justify-content-center">
             <button type="submit" class="btn btn-success">Guardar Registro</button>
             <button type="button" class="btn btn-secondary" id="cancelRegisterBtn">Cancelar</button>

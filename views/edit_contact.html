@@ -1,0 +1,25 @@
+<!-- views/edit_contact.html -->
+<div class="form-section">
+    <h5>Editar Ubicación y Contacto</h5>
+    <p class="text-muted">Serie: <strong id="form_serie_display"></strong></p>
+    <form id="editContactForm">
+        <div class="row g-3">
+            <div class="col-12"><label class="form-label">Dirección</label><input type="text" class="form-control" id="current_direccion" name="current_direccion"></div>
+            <div class="col-md-6"><label class="form-label">Sede</label><input type="text" class="form-control" id="current_sede" name="current_sede"></div>
+            <div class="col-md-6"><label class="form-label">Área/Dpto.</label><input type="text" class="form-control" id="current_dpto" name="current_dpto"></div>
+            <div class="col-md-6"><label class="form-label">Provincia</label><input type="text" class="form-control" id="current_provincia" name="current_provincia"></div>
+            <div class="col-md-6"><label class="form-label">Distrito</label><input type="text" class="form-control" id="current_distrito" name="current_distrito"></div>
+            <div class="col-md-6"><label class="form-label">Zona</label><input type="text" class="form-control" id="current_zona" name="current_zona"></div>
+            <div class="col-md-6"><label class="form-label">Estado</label><select class="form-select" id="current_estado" name="current_estado"><option value="">Mantener</option><option value="produccion">Producción</option><option value="backup">Backup</option><option value="reportado">Reportado</option><option value="cambiado">Cambiado</option><option value="taller">En Taller</option><option value="almacenado">Almacenado</option></select></div>
+            <div class="col-12"><label class="form-label">Observaciones</label><textarea class="form-control" id="current_observaciones" name="current_observaciones" rows="3"></textarea></div>
+        </div>
+        
+        <!-- Componente de archivos reutilizado -->
+        <div id="fileUploadPartial" class="mt-4"></div>
+
+        <div class="d-flex gap-2 mt-4 justify-content-center">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+        </div>
+    </form>
+</div> 

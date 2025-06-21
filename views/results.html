@@ -1,5 +1,20 @@
-<div class="form-section">
-    <h5>Resultados de búsqueda</h5>
-    <ul class="list-group" id="resultsList"></ul>
-    <button class="btn btn-secondary mt-3" id="backToSearchBtn">Volver</button>
-</div> 
+<h2>Resultados de la Búsqueda</h2>
+<div id="resultsContainer" class="list-group mb-4">
+    <!-- Los resultados se insertarán aquí dinámicamente -->
+</div>
+<div class="text-center">
+    <button id="newSearchBtn" class="btn btn-secondary">Nueva Búsqueda</button>
+</div>
+
+<!-- Plantilla para un item de resultado -->
+<template id="result-item-template">
+    <a href="#" class="list-group-item list-group-item-action result-item-card">
+        <div class="d-flex w-100 justify-content-between">
+            <h5 class="mb-1 result-item-serie"></h5>
+            <span class="badge bg-info result-item-estado"></span>
+        </div>
+        <p class="mb-1 result-item-cliente"></p>
+        <small class="text-muted result-item-modelo"></small>
+        <small class="text-info d-block result-item-adm"></small>
+    </a>
+</template> 

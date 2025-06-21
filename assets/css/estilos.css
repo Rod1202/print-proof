@@ -217,18 +217,28 @@ body {
     border: 1px solid #dee2e6;
 }
 
-/* Estilos de la Vista de Detalle */
+/* Estilos para la vista de detalle */
 .detail-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center; /* Centra los elementos hijos (título y contenedor de botones) */
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 1rem;
 }
 
-.detail-actions {
+.main-actions-container {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    width: 100%;
+    justify-content: center;
+}
+
+.main-action-btn {
+    display: flex;
+    align-items: center;
     gap: 0.5rem;
 }
 
@@ -252,5 +262,26 @@ body {
     /* Ocultar texto del botón "Volver" en móvil */
     #backToSearchBtn .btn-text-short {
         display: none;
+    }
+}
+
+/* --- Media Query para hacer los botones responsivos --- */
+@media (max-width: 768px) {
+    .detail-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .main-actions-container {
+        justify-content: space-around; /* Distribuye los iconos */
+    }
+
+    .main-action-btn .btn-text {
+        display: none; /* Oculta el texto en pantallas pequeñas */
+    }
+
+    .main-action-btn {
+        font-size: 1.2rem; /* Aumenta el tamaño del icono */
+        padding: 0.5rem 0.8rem; /* Ajusta el padding para que se vea bien solo el icono */
     }
 } 

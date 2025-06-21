@@ -1,0 +1,39 @@
+<!-- views/edit_client.html -->
+<div class="form-section">
+    <h5>Reasignar Cliente</h5>
+    <p>Reasignando cliente para la impresora con N/S: <strong id="edit-client-serie"></strong></p>
+    <form id="editClientForm">
+        <div class="mb-3">
+            <label for="adm_id" class="form-label">ADM</label>
+            <select class="form-select" id="adm_id" name="adm_id" required>
+                <option value="">Cargando ADMs...</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="client_id" class="form-label">Nuevo Cliente</label>
+            <select class="form-select" id="client_id" name="client_id" required disabled>
+                <option value="">Primero seleccione un ADM</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="current_estado" class="form-label">Nuevo Estado (Opcional)</label>
+            <select class="form-select" id="current_estado" name="current_estado">
+                <option value="">-- No Cambiar Estado --</option>
+                <option value="almacenado">Almacenado</option>
+                <option value="produccion">Producción</option>
+                <option value="backup">Backup</option>
+                <option value="reportado">Reportado</option>
+                <option value="taller">En Taller</option>
+                <option value="cambiado">Cambiado</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="edit-client-observaciones" class="form-label">Observaciones del cambio</label>
+            <textarea class="form-control" id="edit-client-observaciones" name="observaciones" rows="3"></textarea>
+        </div>
+        <div class="d-flex justify-content-center gap-2">
+            <button type="submit" class="btn btn-primary">Guardar Cambio</button>
+            <button type="button" class="btn btn-secondary" id="cancelEditClientBtn">Cancelar</button>
+        </div>
+    </form>
+</div> 

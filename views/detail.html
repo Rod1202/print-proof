@@ -1,25 +1,44 @@
 <div class="container-fluid">
     <div class="detail-header">
         <h5 class="detail-title">Detalles de la Impresora</h5>
-        <div class="detail-actions">
-            <button id="editPrinterBtn" class="btn btn-primary"><i class="fas fa-edit me-2"></i><span class="btn-text">Editar</span></button>
-            <button id="backToSearchBtn" class="btn btn-secondary" title="Volver a la búsqueda"><i class="fas fa-arrow-left"></i><span class="btn-text-short"> Volver</span></button>
+        <div class="main-actions-container">
+            <button id="editStatusBtn" class="btn btn-info main-action-btn">
+                <i class="fas fa-flag"></i><span class="btn-text">Cambiar Estado</span>
+            </button>
+            <button id="editClientBtn" class="btn btn-primary main-action-btn">
+                <i class="fas fa-building"></i><span class="btn-text">Reasignar Cliente</span>
+            </button>
+            <button id="editContactBtn" class="btn btn-secondary main-action-btn">
+                <i class="fas fa-user-edit"></i><span class="btn-text">Editar Contacto</span>
+            </button>
+            <button id="backToSearchBtn" class="btn btn-dark main-action-btn">
+                <i class="fas fa-arrow-left"></i><span class="btn-text">Volver</span>
+            </button>
         </div>
     </div>
 
-    <!-- Sección de Información General (Solo Lectura) -->
-    <div class="card mb-4">
-        <div class="card-header">
-            Información Actual
-        </div>
+    <!-- Sección de Información General -->
+    <div class="card mb-4 mt-3">
+        <div class="card-header">Información Actual</div>
         <div class="card-body">
             <div class="row">
-                <div class="col-md-6 mb-2"><strong>Serie:</strong> <span id="detail_serie"></span></div>
-                <div class="col-md-6 mb-2"><strong>Modelo:</strong> <span id="detail_modelo"></span></div>
-                <div class="col-md-6 mb-2"><strong>Cliente:</strong> <span id="detail_cliente"></span></div>
-                <div class="col-md-6 mb-2"><strong>Estado:</strong> <span id="detail_estado" class="badge"></span></div>
-                <div class="col-12 mt-2"><strong>Observaciones:</strong> <p id="detail_observaciones" class="mb-0"></p></div>
+                <div class="col-md-6">
+                    <p><strong>N/S:</strong> <span id="detail-serie">Cargando...</span></p>
+                    <p><strong>Cliente:</strong> <span id="detail-cliente">Cargando...</span></p>
+                    <p><strong>Modelo:</strong> <span id="detail-modelo">Cargando...</span></p>
+                    <p><strong>Estado:</strong> <span id="detail-estado" class="badge bg-primary">Cargando...</span></p>
+                    <p><strong>ADM:</strong> <span id="detail-adm">Cargando...</span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Contacto:</strong> <span id="detail-contacto">Cargando...</span></p>
+                    <p><strong>Dirección:</strong> <span id="detail-direccion">Cargando...</span></p>
+                    <p><strong>Sede/Zona:</strong> <span id="detail-sede-zona">Cargando...</span></p>
+                    <p><strong>Empresa/Dpto:</strong> <span id="detail-empresa-dpto">Cargando...</span></p>
+                </div>
             </div>
+            <hr>
+            <p><strong>Observaciones:</strong></p>
+            <p><span id="detail-observaciones">Cargando...</span></p>
         </div>
     </div>
 
@@ -40,6 +59,14 @@
         </div>
         <div class="card-body" id="filesContainer">
             <!-- Los archivos se renderizarán aquí desde main.js -->
+        </div>
+    </div>
+</div>
+
+<div class="mt-5">
+    <div class="accordion" id="detailAccordion">
+        <div class="accordion-item">
+            <!-- ... existing code ... -->
         </div>
     </div>
 </div> 
