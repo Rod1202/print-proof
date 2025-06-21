@@ -19,12 +19,10 @@ const fileUploadComponent = `
         <i class="fas fa-paperclip fa-2x mb-2 text-muted"></i>
         <div>Haz clic aquí o arrastra archivos para subir</div>
         <small class="text-muted">Máximo 10MB por archivo</small>
-        <input type="file" id="fileInput" style="display: none;" multiple>
     </div>
     <div class="file-list" id="fileList"></div>
     <div class="d-flex justify-content-center align-items-center mt-3 gap-2">
-        <button type="button" class="btn btn-outline-primary" id="takePhotoBtn" onclick="event.preventDefault(); event.stopPropagation();"><i class="fas fa-camera"></i> Tomar Foto</button>
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="event.preventDefault(); event.stopPropagation();">
+        <button type="button" class="btn btn-outline-primary" id="takePhotoBtn" onclick="event.preventDefault(); event.stopPropagation(); return false;"><i class="fas fa-camera"></i> Tomar Foto</button>
         <select class="form-select w-auto" id="fileCategorySelect">
             <option value="general">General</option>
             <option value="manual">Manual</option>
@@ -33,7 +31,10 @@ const fileUploadComponent = `
             <option value="photo">Foto</option>
             <option value="report">Reporte</option>
         </select>
-    </div>`;
+    </div>
+    <!-- Inputs movidos fuera del formulario para evitar submits accidentales -->
+    <input type="file" id="fileInput" style="display: none; position: absolute; left: -9999px;" multiple onchange="event.preventDefault(); event.stopPropagation();">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none; position: absolute; left: -9999px;" onchange="event.preventDefault(); event.stopPropagation();">`;
 
 // Carga una vista parcial desde /views/{viewName}.html y ejecuta callback tras cargar
 async function loadView(viewName, afterLoad) {
@@ -232,69 +233,72 @@ async function setupRegisterEvents() {
         });
     }
 
-    registerForm.onsubmit = async (e) => {
-        e.preventDefault();
-        const formData = new FormData(registerForm);
-
-        const printerData = {
-            serie: formData.get('serie'),
-            client_id: formData.get('client_id'),
-            printer_model_id: formData.get('printer_model_id'),
-            current_estado: formData.get('current_estado'),
-            current_observaciones: formData.get('current_observaciones'),
-            user_id: getUserId(),
-            // Nuevos campos de contacto y ubicación
-            current_contacto: formData.get('current_contacto'),
-            current_empresa: formData.get('current_empresa'),
-            current_direccion: formData.get('current_direccion'),
-            current_dpto: formData.get('current_dpto'),
-            current_provincia: formData.get('current_provincia'),
-            current_distrito: formData.get('current_distrito'),
-            current_sede: formData.get('current_sede')
-        };
-
-        if (!printerData.client_id || !printerData.printer_model_id) {
-            alert('Por favor, seleccione un cliente y un modelo.');
-            return;
-        }
-
-        console.log("Attempting to insert printer:", printerData);
-
-        const supabase = getSupabase();
-        const { data, error } = await supabase
-            .from('printers')
-            .insert(printerData)
-            .select('id')
-            .single();
-
-        if (error) {
-            console.error('Error creating record:', error);
-            alert(`Error al guardar el registro: ${error.message}`);
-            return;
-        }
-
-        console.log("Record created successfully:", data);
-        const newPrinterId = data.id;
-
-        // Subir archivos si los hay
-        if (uploadedFiles.length > 0) {
-            await uploadAllFiles(newPrinterId);
-        }
-
-        // Mostrar mensaje de éxito y regresar a la búsqueda
-        showMessage('Registro guardado con éxito.', 2000);
-        showView('search');
-    };
-
-    // Prevenir submits accidentales que puedan ocurrir tras tomar foto en móviles
-    registerForm.addEventListener('submit', (e) => {
-        // Solo permitir submit si viene del botón "Guardar Registro"
-        if (!e.submitter || e.submitter.type !== 'submit') {
+    // Configurar el botón de submit manualmente para evitar conflictos
+    const submitButton = registerForm.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Submit accidental prevenido');
-            return false;
-        }
+            
+            const formData = new FormData(registerForm);
+
+            const printerData = {
+                serie: formData.get('serie'),
+                client_id: formData.get('client_id'),
+                printer_model_id: formData.get('printer_model_id'),
+                current_estado: formData.get('current_estado'),
+                current_observaciones: formData.get('current_observaciones'),
+                user_id: getUserId(),
+                // Nuevos campos de contacto y ubicación
+                current_contacto: formData.get('current_contacto'),
+                current_empresa: formData.get('current_empresa'),
+                current_direccion: formData.get('current_direccion'),
+                current_dpto: formData.get('current_dpto'),
+                current_provincia: formData.get('current_provincia'),
+                current_distrito: formData.get('current_distrito'),
+                current_sede: formData.get('current_sede')
+            };
+
+            if (!printerData.client_id || !printerData.printer_model_id) {
+                alert('Por favor, seleccione un cliente y un modelo.');
+                return;
+            }
+
+            console.log("Attempting to insert printer:", printerData);
+
+            const supabase = getSupabase();
+            const { data, error } = await supabase
+                .from('printers')
+                .insert(printerData)
+                .select('id')
+                .single();
+
+            if (error) {
+                console.error('Error creating record:', error);
+                alert(`Error al guardar el registro: ${error.message}`);
+                return;
+            }
+
+            console.log("Record created successfully:", data);
+            const newPrinterId = data.id;
+
+            // Subir archivos si los hay
+            if (uploadedFiles.length > 0) {
+                await uploadAllFiles(newPrinterId);
+            }
+
+            // Mostrar mensaje de éxito y regresar a la búsqueda
+            showMessage('Registro guardado con éxito.', 2000);
+            showView('search');
+        });
+    }
+
+    // Prevenir cualquier submit del formulario que no sea del botón explícito
+    registerForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Submit del formulario prevenido - debe usar el botón explícito');
+        return false;
     });
 }
 

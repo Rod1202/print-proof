@@ -170,29 +170,121 @@ export function setupFileUpload() {
         console.error('Elemento fileUploadArea no encontrado');
     }
     
+    // Protección robusta para el input de archivo regular
     if (fileInput) {
-        fileInput.addEventListener('change', handleFileSelect);
-        console.log('Event listener de fileInput configurado');
+        // Remover cualquier event listener previo para evitar duplicados
+        fileInput.replaceWith(fileInput.cloneNode(true));
+        
+        // Re-obtener la referencia después del reemplazo
+        fileInput = document.getElementById('fileInput');
+        
+        fileInput.addEventListener('change', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('Input de archivo cambió');
+            
+            const files = Array.from(e.target.files);
+            addFiles(files);
+            
+            // Limpiar el valor después de procesar
+            setTimeout(() => {
+                fileInput.value = '';
+            }, 100);
+            
+            return false;
+        });
+        
+        // Protección adicional: prevenir cualquier submit del formulario padre
+        const form = fileInput.closest('form');
+        if (form) {
+            const originalSubmit = form.onsubmit;
+            form.onsubmit = (e) => {
+                // Si el evento viene del input de archivo, prevenirlo
+                if (e.target === fileInput || e.submitter === fileInput) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Submit desde input de archivo prevenido');
+                    return false;
+                }
+                // Si hay un submit handler original, llamarlo
+                if (originalSubmit) {
+                    return originalSubmit.call(form, e);
+                }
+            };
+        }
+        
+        console.log('Event listener de fileInput configurado con protección adicional');
     } else {
         console.error('Elemento fileInput no encontrado');
     }
     
     updateFileList();
     
-    // Lógica para tomar foto
+    // Lógica para tomar foto con protección adicional
     if (takePhotoBtn && cameraInput) {
+        // Remover cualquier event listener previo para evitar duplicados
+        takePhotoBtn.replaceWith(takePhotoBtn.cloneNode(true));
+        cameraInput.replaceWith(cameraInput.cloneNode(true));
+        
+        // Re-obtener las referencias después del reemplazo
+        takePhotoBtn = document.getElementById('takePhotoBtn');
+        cameraInput = document.getElementById('cameraInput');
+        
         takePhotoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('Botón de tomar foto clickeado');
+            
+            // Limpiar el valor del input antes de abrir la cámara
             cameraInput.value = '';
-            cameraInput.click();
+            
+            // Usar setTimeout para asegurar que el evento se procese completamente
+            setTimeout(() => {
+                cameraInput.click();
+            }, 100);
+            
+            return false;
         });
+        
         cameraInput.addEventListener('change', (e) => {
             e.preventDefault();
             e.stopPropagation();
+            e.stopImmediatePropagation();
+            console.log('Input de cámara cambió');
+            
             const files = Array.from(e.target.files);
             addFiles(files);
+            
+            // Limpiar el valor después de procesar
+            setTimeout(() => {
+                cameraInput.value = '';
+            }, 100);
+            
+            return false;
         });
-        console.log('Event listeners de cámara configurados');
+        
+        // Protección adicional: prevenir cualquier submit del formulario padre
+        const form = cameraInput.closest('form');
+        if (form) {
+            const originalSubmit = form.onsubmit;
+            form.onsubmit = (e) => {
+                // Si el evento viene del input de la cámara, prevenirlo
+                if (e.target === cameraInput || e.submitter === cameraInput) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Submit desde input de cámara prevenido');
+                    return false;
+                }
+                // Si hay un submit handler original, llamarlo
+                if (originalSubmit) {
+                    return originalSubmit.call(form, e);
+                }
+            };
+        }
+        
+        console.log('Event listeners de cámara configurados con protección adicional');
     } else {
         console.warn('Elementos de cámara no encontrados:', {
             takePhotoBtn: !!takePhotoBtn,
