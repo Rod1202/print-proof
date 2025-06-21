@@ -9,29 +9,24 @@
     <link href="assets/css/estilos.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Header fijo -->
-    <header class="main-container">
-        <div class="header-section">
-            <div class="logo-text"><img src="logo.png" alt="Logo" class="logo-img"></div>
-            <div class="user-icon">
-                <i class="fas fa-user-circle"></i>
-                <span id="userIdDisplay">No Autenticado</span>
-            </div>
+    <header class="bg-light p-3 shadow-sm">
+        <div class="header-center">
+            <img src="logo.png" alt="Logo" id="logo">
+            <div id="userIdDisplay" class="text-muted small"></div>
         </div>
     </header>
 
-    <!-- Contenedor dinámico de vistas -->
-    <div id="mainView" class="main-container"></div>
+    <main class="container mt-4">
+        <div id="mainView">
+            <!-- Las vistas se cargarán aquí -->
+        </div>
+        <div id="messageBox" class="message-box"></div>
+    </main>
 
-    <!-- Footer fijo -->
-    <footer class="main-container text-center mt-4 mb-2">
-        Power By : Rodrigo Carbonel
+    <footer class="text-center text-muted py-3 mt-4">
+        Power By: Rodrigo Carbonel
     </footer>
 
-    <!-- Contenedor para mensajes de notificación -->
-    <div id="messageBox" class="message-box"></div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="assets/js/main.js"></script>
 </body>
 </html>

@@ -66,43 +66,6 @@ function setupAuthEvents(showViewFn) {
 function setupSearchEvents() {
     document.getElementById('registerBtn').onclick = () => showView('register');
     
-    // Botón para mostrar todos los registros
-    document.getElementById('showAllBtn').onclick = async () => {
-        console.log('Mostrando todos los registros...');
-        console.log('User ID:', getUserId());
-        console.log('Is Auth Ready:', getIsAuthReady());
-        
-        if (!getIsAuthReady()) {
-            showMessage('Debes iniciar sesión para usar la app.', 3000);
-            return;
-        }
-        
-        const supabase = getSupabase();
-        console.log('Cliente Supabase:', supabase);
-        
-        try {
-            console.log('Ejecutando consulta: SELECT * FROM printers WHERE user_id =', getUserId());
-            const { data, error } = await supabase
-                .from('printers')
-                .select('*')
-                .order('created_at', { ascending: false });
-            
-            console.log('Respuesta completa de Supabase:', { data, error });
-            
-            if (error) {
-                console.error('Error de Supabase:', error);
-                throw error;
-            }
-            console.log('Todos los registros encontrados:', data);
-            console.log('Número de registros:', data ? data.length : 0);
-            lastSearchResults = data;
-            showView('results', lastSearchResults);
-        } catch (error) {
-            console.error('Error completo:', error);
-            showMessage('Error al buscar: ' + error.message, 4000);
-        }
-    };
-    
     document.getElementById('searchBtnView').onclick = async () => {
         const searchTerm = document.getElementById('searchInputView').value.trim();
         console.log('Búsqueda iniciada con término:', searchTerm);
@@ -169,9 +132,6 @@ function setupSearchEvents() {
             console.error('Error completo:', error);
             showMessage('Error al buscar: ' + error.message, 4000);
         }
-        
-        // Agregar botón de prueba temporal
-        addTestButton();
     };
 }
 
@@ -626,5 +586,16 @@ function addTestButton() {
 // Inicialización
 initSupabase();
 document.addEventListener('DOMContentLoaded', () => {
+    // Añadir navegación al logo
+    const logo = document.getElementById('logo');
+    if (logo) {
+        logo.style.cursor = 'pointer'; // Cambiar cursor para indicar que es clickeable
+        logo.addEventListener('click', () => {
+            if (getIsAuthReady()) {
+                showView('search');
+            }
+        });
+    }
+
     showView('auth');
 }); 
