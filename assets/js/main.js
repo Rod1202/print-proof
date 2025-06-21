@@ -6,7 +6,7 @@ import { setupFileUpload, uploadedFiles, resetFiles, updateFileList } from '../.
 import { setupSearch } from '../../modules/search.js';
 
 // Estado global de la vista actual
-let currentView = 'auth'; // 'auth', 'search', 'register', 'results', 'edit'
+let currentView = 'auth'; // 'auth', 'search', 'register', 'results', 'edit', 'detail'
 let lastSearchResults = null;
 let lastEditData = null;
 
@@ -36,6 +36,9 @@ export function showView(view, data = null) {
             break;
         case 'edit':
             loadView('edit', () => setupEditEvents(data));
+            break;
+        case 'detail':
+            loadView('detail', () => setupDetailEvents(data));
             break;
     }
 }
@@ -150,8 +153,18 @@ function setupSearchEvents() {
             }
             console.log('Resultados de búsqueda encontrados:', data);
             console.log('Número de resultados:', data ? data.length : 0);
+            
             lastSearchResults = data;
-            showView('results', lastSearchResults);
+
+            if (data && data.length === 1) {
+                // Si hay un único resultado, vamos directamente a la vista de detalle
+                console.log('Se encontró un resultado único. Mostrando vista de detalle.');
+                showView('detail', data[0]);
+            } else {
+                // Si hay 0 o múltiples resultados, mostramos la lista
+                console.log('Se encontraron 0 o múltiples resultados. Mostrando lista.');
+                showView('results', data);
+            }
         } catch (error) {
             console.error('Error completo:', error);
             showMessage('Error al buscar: ' + error.message, 4000);
@@ -349,6 +362,50 @@ function setupResultsEvents(data) {
     document.getElementById('backToSearchBtn').onclick = () => showView('search');
 }
 
+// VISTA DE DETALLE (NUEVA)
+function setupDetailEvents(data) {
+    if (!data) {
+        showMessage('No hay datos para mostrar', 3000);
+        showView('search');
+        return;
+    }
+
+    lastEditData = data; // Guardamos los datos para el botón de editar
+
+    // Rellenar la información de solo lectura
+    document.getElementById('detail_serie').textContent = data.serie || 'N/A';
+    document.getElementById('detail_modelo').textContent = data.current_modelo || 'N/A';
+    document.getElementById('detail_cliente').textContent = data.current_cliente || 'N/A';
+    const estadoBadge = document.getElementById('detail_estado');
+    estadoBadge.textContent = data.current_estado || 'Sin estado';
+    estadoBadge.className = `badge bg-${getEstadoColor(data.current_estado)}`;
+    document.getElementById('detail_observaciones').textContent = data.current_observaciones || 'Sin observaciones.';
+
+    // Renderizar historial y archivos
+    renderPrinterHistory(data.id, 'historyContainer');
+    renderPrinterFiles(data.id, 'filesContainer');
+
+    // Asignar eventos a los botones
+    document.getElementById('editPrinterBtn').onclick = () => {
+        showView('edit', data);
+    };
+    document.getElementById('backToSearchBtn').onclick = () => {
+        showView('search');
+    };
+}
+
+function getEstadoColor(estado) {
+    switch (estado) {
+        case 'produccion': return 'success';
+        case 'backup': return 'info';
+        case 'reportado': return 'warning';
+        case 'cambiado': return 'secondary';
+        case 'taller': return 'danger';
+        case 'almacenado': return 'dark';
+        default: return 'light';
+    }
+}
+
 // VISTA 5: Edición
 function setupEditEvents(data) {
     if (data) {
@@ -365,10 +422,9 @@ function setupEditEvents(data) {
         document.getElementById('current_zona').value = data.current_zona || '';
         document.getElementById('current_estado').value = data.current_estado || '';
         document.getElementById('current_observaciones').value = data.current_observaciones || '';
-        // Mostrar historial
-        renderPrinterHistory(data.id);
-        // Mostrar archivos agrupados por categoría
-        renderPrinterFiles(data.id);
+        // Renderizar historial y archivos en la vista de edición
+        renderPrinterHistory(data.id, 'editHistoryContainer');
+        renderPrinterFiles(data.id, 'editFilesContainer');
     }
     document.getElementById('editForm').onsubmit = async (e) => {
         e.preventDefault();
@@ -402,8 +458,7 @@ function setupEditEvents(data) {
             const { error } = await supabase
                 .from('printers')
                 .update(updateData)
-                .eq('id', data.id)
-                .eq('user_id', getUserId());
+                .eq('id', data.id);
             if (error) {
                 showMessage('Error al actualizar: ' + error.message, 4000);
                 return;
@@ -421,57 +476,69 @@ function setupEditEvents(data) {
     setupFileUpload(); // Configurar la funcionalidad de subida de archivos
 }
 
-// Mostrar historial de la impresora
-async function renderPrinterHistory(printerId) {
-    const supabase = getSupabase();
-    const userId = getUserId();
-    const historyDiv = document.createElement('div');
-    historyDiv.className = 'mt-4';
-    historyDiv.innerHTML = '<h6>Historial de cambios</h6><div id="historyList">Cargando...</div>';
-    document.getElementById('editForm').parentElement.appendChild(historyDiv);
+// Mostrar historial de la impresora (MODIFICADA)
+async function renderPrinterHistory(printerId, containerId) {
+    const historyContainer = document.getElementById(containerId);
+    if (!historyContainer) {
+        console.error(`Contenedor de historial '${containerId}' no encontrado.`);
+        return;
+    }
+    historyContainer.innerHTML = '<div id="historyList">Cargando...</div>'; // Limpiado para evitar doble título
+    const historyList = document.getElementById('historyList');
+
     try {
+        const supabase = getSupabase();
         const { data, error } = await supabase
             .from('printer_history')
             .select('*')
             .eq('printer_id', printerId)
-            .eq('user_id', userId)
             .order('created_at', { ascending: false });
+        
         if (error) throw error;
-        const historyList = document.getElementById('historyList');
+        
         if (!data || data.length === 0) {
-            historyList.innerHTML = '<div class="text-muted">Sin historial.</div>';
+            historyList.innerHTML = '<div class="text-muted small p-2">No hay historial de cambios para esta impresora.</div>';
         } else {
             historyList.innerHTML = data.map(h => `
-                <div class="border-bottom py-1 small">
-                    <b>${h.change_type}</b> - ${h.change_reason || ''}<br>
-                    <span class="text-muted">${new Date(h.created_at).toLocaleString()}</span>
-                    <div>${h.change_description || ''}</div>
+                <div class="border-bottom py-2 small">
+                    <div class="d-flex justify-content-between">
+                        <strong>Tipo de cambio: <span class="badge bg-secondary">${h.change_type || 'N/A'}</span></strong>
+                        <span class="text-muted">${new Date(h.created_at).toLocaleString()}</span>
+                    </div>
+                    <div class="mt-1">
+                        <p class="mb-0"><strong>Cliente:</strong> ${h.cliente || 'N/A'} | <strong>Estado:</strong> ${h.estado || 'N/A'}</p>
+                        <p class="mb-0 text-muted">${h.observaciones || ''}</p>
+                    </div>
                 </div>
             `).join('');
         }
     } catch (error) {
-        document.getElementById('historyList').innerHTML = 'Error al cargar historial.';
+        console.error('Error detallado al cargar historial:', error); // Log del error
+        if(historyList) historyList.innerHTML = '<div class="alert alert-danger small">Error al cargar historial. Revisa la consola para más detalles.</div>';
     }
 }
 
-// Mostrar archivos agrupados por categoría
-async function renderPrinterFiles(printerId) {
-    const supabase = getSupabase();
-    const userId = getUserId();
-    const filesDiv = document.createElement('div');
-    filesDiv.className = 'mt-4';
-    filesDiv.innerHTML = '<h6>Archivos adjuntos</h6><div id="filesList">Cargando...</div>';
-    document.getElementById('editForm').parentElement.appendChild(filesDiv);
+// Mostrar archivos agrupados por categoría (MODIFICADA)
+async function renderPrinterFiles(printerId, containerId) {
+    const filesContainer = document.getElementById(containerId);
+    if (!filesContainer) {
+        console.error(`Contenedor de archivos '${containerId}' no encontrado.`);
+        return;
+    }
+    filesContainer.innerHTML = '<div id="filesList">Cargando...</div>'; // Limpiado
+    const filesList = document.getElementById('filesList');
+
     try {
+        const supabase = getSupabase();
         const { data, error } = await supabase
             .from('printer_files')
             .select('*')
-            .eq('printer_id', printerId)
-            .eq('user_id', userId);
+            .eq('printer_id', printerId);
+        
         if (error) throw error;
-        const filesList = document.getElementById('filesList');
+        
         if (!data || data.length === 0) {
-            filesList.innerHTML = '<div class="text-muted">Sin archivos.</div>';
+            filesList.innerHTML = '<div class="text-muted small p-2">No hay archivos adjuntos.</div>';
         } else {
             // Agrupar por categoría
             const grouped = {};
@@ -489,7 +556,8 @@ async function renderPrinterFiles(printerId) {
             `).join('');
         }
     } catch (error) {
-        document.getElementById('filesList').innerHTML = 'Error al cargar archivos.';
+        console.error('Error detallado al cargar archivos:', error); // Log del error
+        if(filesList) filesList.innerHTML = '<div class="alert alert-danger small">Error al cargar archivos. Revisa la consola para más detalles.</div>';
     }
 }
 

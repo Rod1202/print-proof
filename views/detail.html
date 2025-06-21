@@ -1,0 +1,45 @@
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Detalles de la Impresora</h5>
+        <div>
+            <button id="editPrinterBtn" class="btn btn-primary"><i class="fas fa-edit me-2"></i>Editar</button>
+            <button id="backToSearchBtn" class="btn btn-secondary"><i class="fas fa-arrow-left me-2"></i>Volver a la Búsqueda</button>
+        </div>
+    </div>
+
+    <!-- Sección de Información General (Solo Lectura) -->
+    <div class="card mb-4">
+        <div class="card-header">
+            Información Actual
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6 mb-2"><strong>Serie:</strong> <span id="detail_serie"></span></div>
+                <div class="col-md-6 mb-2"><strong>Modelo:</strong> <span id="detail_modelo"></span></div>
+                <div class="col-md-6 mb-2"><strong>Cliente:</strong> <span id="detail_cliente"></span></div>
+                <div class="col-md-6 mb-2"><strong>Estado:</strong> <span id="detail_estado" class="badge"></span></div>
+                <div class="col-12 mt-2"><strong>Observaciones:</strong> <p id="detail_observaciones" class="mb-0"></p></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Historial -->
+    <div class="card">
+        <div class="card-header">
+            Historial de Cambios
+        </div>
+        <div class="card-body" id="historyContainer">
+            <!-- El historial se renderizará aquí desde main.js -->
+        </div>
+    </div>
+
+    <!-- Sección de Archivos -->
+    <div class="card mt-4">
+        <div class="card-header">
+            Archivos Adjuntos
+        </div>
+        <div class="card-body" id="filesContainer">
+            <!-- Los archivos se renderizarán aquí desde main.js -->
+        </div>
+    </div>
+</div> 
