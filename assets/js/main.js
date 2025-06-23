@@ -60,7 +60,7 @@ function checkForSavedState() {
 // Verificar estado guardado cuando se carga la página
 document.addEventListener('DOMContentLoaded', () => {
     // Si hay estado guardado, forzar la vista de registro
-    if (sessionStorage.getItem('registerFormState')) {
+    if (localStorage.getItem('registerFormState')) {
         currentView = 'register';
         showView('register');
     }
@@ -158,8 +158,8 @@ export function showView(view, data = null) {
         case 'register':
             loadView('register', () => {
                 setupRegisterEvents();
-                // Restaurar estado si hay sessionStorage
-                const savedState = sessionStorage.getItem('registerFormState');
+                // Restaurar estado si hay localStorage
+                const savedState = localStorage.getItem('registerFormState');
                 if (savedState) {
                     try {
                         const formState = JSON.parse(savedState);
@@ -171,13 +171,13 @@ export function showView(view, data = null) {
                                     element.value = formState[key];
                                 }
                             });
-                            console.log('Estado del formulario restaurado desde sessionStorage:', formState);
+                            console.log('Estado del formulario restaurado desde localStorage:', formState);
                         }
                         // Limpiar el estado guardado
-                        sessionStorage.removeItem('registerFormState');
+                        localStorage.removeItem('registerFormState');
                     } catch (error) {
-                        console.error('Error al restaurar estado desde sessionStorage:', error);
-                        sessionStorage.removeItem('registerFormState');
+                        console.error('Error al restaurar estado desde localStorage:', error);
+                        localStorage.removeItem('registerFormState');
                     }
                 }
             });

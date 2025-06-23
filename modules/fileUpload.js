@@ -257,9 +257,9 @@ export function setupFileUpload() {
                     adm_id: form.querySelector('#adm_id')?.value || ''
                 };
                 
-                // Guardar en sessionStorage para persistir durante la sesión de la cámara
-                sessionStorage.setItem('registerFormState', JSON.stringify(formState));
-                console.log('Estado del formulario guardado antes de abrir cámara:', formState);
+                // Guardar en localStorage para persistir durante la sesión de la cámara
+                localStorage.setItem('registerFormState', JSON.stringify(formState));
+                console.log('Estado del formulario guardado antes de abrir cámara (localStorage):', formState);
             }
             
             // Limpiar el valor del input antes de abrir la cámara
@@ -283,7 +283,7 @@ export function setupFileUpload() {
             addFiles(files);
             
             // Restaurar el estado del formulario después de tomar la foto
-            const savedState = sessionStorage.getItem('registerFormState');
+            const savedState = localStorage.getItem('registerFormState');
             if (savedState) {
                 try {
                     const formState = JSON.parse(savedState);
@@ -295,10 +295,10 @@ export function setupFileUpload() {
                                 element.value = formState[key];
                             }
                         });
-                        console.log('Estado del formulario restaurado después de tomar foto:', formState);
+                        console.log('Estado del formulario restaurado después de tomar foto (localStorage):', formState);
                     }
                     // Limpiar el estado guardado
-                    sessionStorage.removeItem('registerFormState');
+                    localStorage.removeItem('registerFormState');
                 } catch (error) {
                     console.error('Error al restaurar estado del formulario:', error);
                 }
