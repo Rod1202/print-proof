@@ -11,6 +11,57 @@ let lastSearchResults = null;
 let lastEditData = null;
 let currentRecordId = null; // ID de la impresora actualmente seleccionada
 let allClientsData = []; // Para almacenar clientes con sus ADMs
+let formState = {}; // Para preservar el estado del formulario
+let shouldRestoreView = false; // Flag para restaurar vista después de foto
+
+// Detectar cuando la página se vuelve visible (después de tomar foto en móviles)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        // Si estábamos en registro y tenemos estado preservado, restaurar
+        if (currentView === 'register' && Object.keys(formState).length > 0) {
+            console.log('Página vuelve visible - restaurando vista de registro');
+            shouldRestoreView = true;
+            showView('register');
+        }
+    }
+});
+
+// Detectar cuando la ventana se enfoca (alternativa para algunos navegadores móviles)
+window.addEventListener('focus', () => {
+    if (currentView === 'register' && Object.keys(formState).length > 0) {
+        console.log('Ventana enfocada - restaurando vista de registro');
+        shouldRestoreView = true;
+        showView('register');
+    }
+});
+
+// Función para verificar y restaurar estado guardado al cargar la página
+function checkForSavedState() {
+    const savedState = sessionStorage.getItem('registerFormState');
+    if (savedState) {
+        try {
+            const formState = JSON.parse(savedState);
+            console.log('Estado guardado encontrado al cargar página:', formState);
+            
+            // Si hay estado guardado, probablemente venimos de tomar una foto
+            // Restaurar automáticamente la vista de registro
+            currentView = 'register';
+            showView('register');
+            
+            // El estado se restaurará en setupRegisterEvents
+            shouldRestoreView = true;
+        } catch (error) {
+            console.error('Error al procesar estado guardado:', error);
+            sessionStorage.removeItem('registerFormState');
+        }
+    }
+}
+
+// Verificar estado guardado cuando se carga la página
+document.addEventListener('DOMContentLoaded', () => {
+    // Pequeño delay para asegurar que todo esté listo
+    setTimeout(checkForSavedState, 100);
+});
 
 // Reutilizaremos este HTML para la subida de archivos
 const fileUploadComponent = `
@@ -45,7 +96,54 @@ async function loadView(viewName, afterLoad) {
     if (afterLoad) afterLoad();
 }
 
+// Función para preservar el estado del formulario actual
+function preserveFormState() {
+    if (currentView === 'register') {
+        const form = document.getElementById('registerForm');
+        if (form) {
+            formState = {
+                serie: form.querySelector('#serie')?.value || '',
+                client_id: form.querySelector('#client_id')?.value || '',
+                printer_model_id: form.querySelector('#printer_model_id')?.value || '',
+                current_estado: form.querySelector('#current_estado')?.value || '',
+                current_observaciones: form.querySelector('#current_observaciones')?.value || '',
+                current_contacto: form.querySelector('#current_contacto')?.value || '',
+                current_empresa: form.querySelector('#current_empresa')?.value || '',
+                current_direccion: form.querySelector('#current_direccion')?.value || '',
+                current_dpto: form.querySelector('#current_dpto')?.value || '',
+                current_provincia: form.querySelector('#current_provincia')?.value || '',
+                current_distrito: form.querySelector('#current_distrito')?.value || '',
+                current_sede: form.querySelector('#current_sede')?.value || '',
+                adm_name: form.querySelector('#adm_name')?.value || '',
+                adm_id: form.querySelector('#adm_id')?.value || ''
+            };
+            console.log('Estado del formulario preservado:', formState);
+        }
+    }
+}
+
+// Función para restaurar el estado del formulario
+function restoreFormState() {
+    if (currentView === 'register' && Object.keys(formState).length > 0) {
+        const form = document.getElementById('registerForm');
+        if (form) {
+            Object.keys(formState).forEach(key => {
+                const element = form.querySelector(`#${key}`);
+                if (element) {
+                    element.value = formState[key];
+                }
+            });
+            console.log('Estado del formulario restaurado:', formState);
+        }
+    }
+}
+
 export function showView(view, data = null) {
+    // Preservar el estado actual antes de cambiar de vista
+    if (currentView === 'register') {
+        preserveFormState();
+    }
+    
     currentView = view;
     switch (view) {
         case 'auth':
@@ -55,7 +153,37 @@ export function showView(view, data = null) {
             loadView('search', setupSearchEvents);
             break;
         case 'register':
-            loadView('register', () => setupRegisterEvents());
+            loadView('register', () => {
+                setupRegisterEvents();
+                // Restaurar estado si es necesario
+                if (shouldRestoreView) {
+                    restoreFormState();
+                    shouldRestoreView = false;
+                }
+                
+                // Verificar si hay estado guardado en sessionStorage
+                const savedState = sessionStorage.getItem('registerFormState');
+                if (savedState) {
+                    try {
+                        const formState = JSON.parse(savedState);
+                        const form = document.getElementById('registerForm');
+                        if (form) {
+                            Object.keys(formState).forEach(key => {
+                                const element = form.querySelector(`#${key}`);
+                                if (element) {
+                                    element.value = formState[key];
+                                }
+                            });
+                            console.log('Estado del formulario restaurado desde sessionStorage:', formState);
+                        }
+                        // Limpiar el estado guardado
+                        sessionStorage.removeItem('registerFormState');
+                    } catch (error) {
+                        console.error('Error al restaurar estado desde sessionStorage:', error);
+                        sessionStorage.removeItem('registerFormState');
+                    }
+                }
+            });
             break;
         case 'results':
             loadView('results', () => setupResultsEvents(data));

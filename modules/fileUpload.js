@@ -237,6 +237,31 @@ export function setupFileUpload() {
             e.stopImmediatePropagation();
             console.log('Botón de tomar foto clickeado');
             
+            // Preservar el estado del formulario antes de abrir la cámara
+            const form = document.getElementById('registerForm');
+            if (form) {
+                const formState = {
+                    serie: form.querySelector('#serie')?.value || '',
+                    client_id: form.querySelector('#client_id')?.value || '',
+                    printer_model_id: form.querySelector('#printer_model_id')?.value || '',
+                    current_estado: form.querySelector('#current_estado')?.value || '',
+                    current_observaciones: form.querySelector('#current_observaciones')?.value || '',
+                    current_contacto: form.querySelector('#current_contacto')?.value || '',
+                    current_empresa: form.querySelector('#current_empresa')?.value || '',
+                    current_direccion: form.querySelector('#current_direccion')?.value || '',
+                    current_dpto: form.querySelector('#current_dpto')?.value || '',
+                    current_provincia: form.querySelector('#current_provincia')?.value || '',
+                    current_distrito: form.querySelector('#current_distrito')?.value || '',
+                    current_sede: form.querySelector('#current_sede')?.value || '',
+                    adm_name: form.querySelector('#adm_name')?.value || '',
+                    adm_id: form.querySelector('#adm_id')?.value || ''
+                };
+                
+                // Guardar en sessionStorage para persistir durante la sesión de la cámara
+                sessionStorage.setItem('registerFormState', JSON.stringify(formState));
+                console.log('Estado del formulario guardado antes de abrir cámara:', formState);
+            }
+            
             // Limpiar el valor del input antes de abrir la cámara
             cameraInput.value = '';
             
@@ -256,6 +281,28 @@ export function setupFileUpload() {
             
             const files = Array.from(e.target.files);
             addFiles(files);
+            
+            // Restaurar el estado del formulario después de tomar la foto
+            const savedState = sessionStorage.getItem('registerFormState');
+            if (savedState) {
+                try {
+                    const formState = JSON.parse(savedState);
+                    const form = document.getElementById('registerForm');
+                    if (form) {
+                        Object.keys(formState).forEach(key => {
+                            const element = form.querySelector(`#${key}`);
+                            if (element) {
+                                element.value = formState[key];
+                            }
+                        });
+                        console.log('Estado del formulario restaurado después de tomar foto:', formState);
+                    }
+                    // Limpiar el estado guardado
+                    sessionStorage.removeItem('registerFormState');
+                } catch (error) {
+                    console.error('Error al restaurar estado del formulario:', error);
+                }
+            }
             
             // Limpiar el valor después de procesar
             setTimeout(() => {
