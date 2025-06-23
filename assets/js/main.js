@@ -59,8 +59,11 @@ function checkForSavedState() {
 
 // Verificar estado guardado cuando se carga la página
 document.addEventListener('DOMContentLoaded', () => {
-    // Pequeño delay para asegurar que todo esté listo
-    setTimeout(checkForSavedState, 100);
+    // Si hay estado guardado, forzar la vista de registro
+    if (sessionStorage.getItem('registerFormState')) {
+        currentView = 'register';
+        showView('register');
+    }
 });
 
 // Reutilizaremos este HTML para la subida de archivos
@@ -155,13 +158,7 @@ export function showView(view, data = null) {
         case 'register':
             loadView('register', () => {
                 setupRegisterEvents();
-                // Restaurar estado si es necesario
-                if (shouldRestoreView) {
-                    restoreFormState();
-                    shouldRestoreView = false;
-                }
-                
-                // Verificar si hay estado guardado en sessionStorage
+                // Restaurar estado si hay sessionStorage
                 const savedState = sessionStorage.getItem('registerFormState');
                 if (savedState) {
                     try {
